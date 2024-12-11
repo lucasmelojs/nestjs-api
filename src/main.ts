@@ -1,4 +1,4 @@
-import { NestFactory } from '@nestjs/core';
+import { NestFactory } from '@nestjs/common';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { WinstonModule } from 'nest-winston';
@@ -76,7 +76,8 @@ async function bootstrap() {
   // Enable CORS
   app.enableCors();
 
-  const port = process.env.PORT || 3000;
+  // Parse PORT environment variable to number with fallback
+  const port = parseInt(process.env.PORT || '3000', 10);
   await app.listen(port);
 
   // Log startup message
