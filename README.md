@@ -1,186 +1,196 @@
-# NestJS Multi-Tenant API with PostgreSQL
+# NestJS API with pgcrypto Authentication
 
-This is a secure, multi-tenant REST API built with NestJS, featuring PostgreSQL with pgcrypto for password management and Docker for containerization.
+This project is a secure NestJS API using PostgreSQL's pgcrypto for password hashing and token management.
 
 ## Features
 
-- 🔐 Multi-tenant authentication
-- 🛡️ Row Level Security (RLS) for tenant isolation
-- 🔒 PostgreSQL pgcrypto for password management
-- 🎫 JWT-based authentication
-- 🐋 Docker and Docker Compose setup
-- 🔄 Hot reload for development
+- Secure password hashing using pgcrypto
+- JWT authentication with refresh tokens
+- Role-based access control
+- Automatic database initialization
+- Docker support
+- Environment validation
 
 ## Prerequisites
 
-- Docker and Docker Compose
-- Node.js 18 or higher
-- npm or yarn
+- Node.js (v18 or later)
+- PostgreSQL (v15 or later)
+- Docker (optional)
 
-## Quick Start
+## Getting Started
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/lucasmelojs/nestjs-api.git
+git clone <repository-url>
 cd nestjs-api
 ```
 
-2. Copy the environment file:
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Set up environment variables:
 ```bash
 cp .env.example .env
+# Edit .env with your configurations
 ```
 
-3. Update the environment variables in `.env` with your settings
-
-4. Start the containers:
+4. Start the database:
 ```bash
-docker-compose up -d
+# Using Docker
+npm run docker:db
+
+# Or fresh start (will remove existing data)
+npm run docker:db:fresh
 ```
 
-5. Run database migrations:
+5. Start the application:
 ```bash
-docker-compose exec api npm run migration:run
+# Development
+npm run start:dev
+
+# Production
+npm run build
+npm run start:prod
 ```
 
-The API will be available at `http://localhost:3000`
+## API Endpoints
 
-## Project Structure
-
-```
-├── src/
-│   ├── auth/                 # Authentication module
-│   ├── config/              # Configuration files
-│   ├── migrations/          # Database migrations
-│   ├── shared/              # Shared modules and utilities
-│   ├── tenants/             # Tenant management
-│   └── users/               # User management
-├── docker-compose.yml       # Docker Compose configuration
-├── Dockerfile              # Docker container definition
-└── init.sql                # Initial database setup
-```
-
-## Authentication
-
-The API uses JWT tokens for authentication. Each request must include:
-
-- `Authorization: Bearer <token>` header for authentication
-- `x-tenant-id: <tenant-id>` header for tenant context
-
-### Example Login Request
+### Authentication
 
 ```bash
-curl -X POST http://localhost:3000/auth/login \
-  -H "Content-Type: application/json" \
-  -H "x-tenant-id: your-tenant-id" \
-  -d '{
-    "email": "user@example.com",
-    "password": "your-password"
-  }'
+# Register
+POST /api/auth/register
+{
+  "email": "user@example.com",
+  "password": "secure_password",
+  "role": "user"  # Optional, defaults to 'user'
+}
+
+# Login
+POST /api/auth/login
+{
+  "email": "user@example.com",
+  "password": "secure_password"
+}
+
+# Refresh Token
+POST /api/auth/refresh
+Headers: Authorization: Bearer <refresh_token>
+
+# Logout
+POST /api/auth/logout
+Headers: Authorization: Bearer <access_token>
+
+# Get Profile
+GET /api/auth/profile
+Headers: Authorization: Bearer <access_token>
 ```
 
-## Database Security
-
-- Uses PostgreSQL's pgcrypto for password management
-- Implements Row Level Security (RLS) for tenant isolation
-- Custom functions for password hashing and verification
-
-## Development
-
-### Running Tests
+## Database Management
 
 ```bash
-# unit tests
+# Check database status
+npm run db:check
+
+# Start fresh database
+npm run docker:db:fresh
+
+# Start existing database
+npm run docker:db
+```
+
+## Security Features
+
+### Password Hashing
+Passwords are hashed using PostgreSQL's pgcrypto extension with the following features:
+- Blowfish encryption (bf)
+- Salt rounds: 8
+- Server-side hashing
+- Security definer functions
+
+### Token Management
+- Access tokens: 15 minutes expiration
+- Refresh tokens: 7 days expiration
+- Secure token storage with pgcrypto
+- Automatic token cleanup
+
+### Database Security
+- All sensitive operations use SECURITY DEFINER
+- Password operations happen at database level
+- Proper parameter binding
+- Role-based access control
+
+## Testing
+
+```bash
+# Unit tests
 npm run test
 
 # e2e tests
 npm run test:e2e
 
-# test coverage
+# Test coverage
 npm run test:cov
 ```
 
-### Database Migrations
+## Docker Support
 
-Create a new migration:
+The project includes Docker configuration for PostgreSQL:
+
 ```bash
-npm run migration:create -- -n YourMigrationName
-```
+# Start PostgreSQL container
+docker-compose up postgres -d
 
-Run migrations:
-```bash
-npm run migration:run
-```
-
-Revert migrations:
-```bash
-npm run migration:revert
-```
-
-## Docker Commands
-
-Build and start containers:
-```bash
-docker-compose up -d --build
-```
-
-View logs:
-```bash
-docker-compose logs -f api
-```
-
-Stop containers:
-```bash
+# Stop containers
 docker-compose down
+
+# Remove volumes and start fresh
+docker-compose down -v && docker-compose up postgres -d
 ```
 
-Rebuild a specific service:
-```bash
-docker-compose up -d --build api
-```
+## Database Functions
+
+The following PostgreSQL functions are available:
+
+### Authentication
+- `encrypt_password(password TEXT)` - Encrypts a password
+- `verify_password(password TEXT, hashed_password TEXT)` - Verifies a password
+- `update_refresh_token(user_id UUID, new_refresh_token TEXT)` - Updates refresh token
+- `register_user(email TEXT, password TEXT, role user_role)` - Registers a new user
+
+### Maintenance
+- `clean_expired_refresh_tokens()` - Removes expired refresh tokens
+- `update_updated_at_column()` - Automatically updates timestamps
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|----------|
-| PORT | API port | 3000 |
-| NODE_ENV | Environment | development |
-| DB_HOST | Database host | postgres |
-| DB_PORT | Database port | 5432 |
-| DB_USERNAME | Database user | postgres |
-| DB_PASSWORD | Database password | postgres |
-| DB_DATABASE | Database name | nestjs_db |
-| JWT_SECRET | JWT secret key | - |
-| JWT_EXPIRATION | JWT expiration | 1h |
+```env
+# Application
+NODE_ENV=development
+PORT=3000
+CORS_ORIGIN=*
 
-## Security Features
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+DB_DATABASE=nestjs_api
 
-1. **Multi-Tenant Isolation**
-   - Row Level Security (RLS)
-   - Tenant-specific database schemas
-   - Request context isolation
-
-2. **Password Security**
-   - pgcrypto for password hashing
-   - Secure password verification
-   - No plain-text password storage
-
-3. **Authentication**
-   - JWT-based authentication
-   - Token expiration
-   - Role-based access control
+# JWT
+JWT_SECRET=your-secret-key
+JWT_REFRESH_SECRET=your-refresh-secret
+```
 
 ## Contributing
 
-1. Fork the repository
-2. Create your feature branch: `git checkout -b feature/my-new-feature`
-3. Commit your changes: `git commit -am 'Add some feature'`
-4. Push to the branch: `git push origin feature/my-new-feature`
-5. Submit a pull request
+1. Create a feature branch
+2. Commit your changes
+3. Push to the branch
+4. Create a Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Support
-
-For support, please open an issue in the GitHub repository.
+This project is licensed under the MIT License.
