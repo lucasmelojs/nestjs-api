@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  postgres_test:
+    image: postgres:15-alpine
+    container_name: nestjs_auth_test_db
+    environment:
+      POSTGRES_USER: postgres_test
+      POSTGRES_PASSWORD: postgres_test
+      POSTGRES_DB: nestjs_auth_test
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - ../init-scripts:/docker-entrypoint-initdb.d/init-scripts
+      - ../docker/postgres/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
