@@ -3,9 +3,6 @@ FROM node:18-alpine AS development
 # Create app directory
 WORKDIR /usr/src/app
 
-# Install NestJS CLI
-RUN npm i -g @nestjs/cli
-
 # Copy application dependency manifests
 COPY package*.json ./
 
@@ -24,9 +21,6 @@ ARG NODE_ENV=production
 ENV NODE_ENV=${NODE_ENV}
 
 WORKDIR /usr/src/app
-
-# Install NestJS CLI
-RUN npm i -g @nestjs/cli
 
 COPY package*.json ./
 
