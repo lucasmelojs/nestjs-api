@@ -1,42 +1,18 @@
 version: '3.8'
 
 services:
-  api:
-    container_name: nestjs_api
+  postgres:
     build:
       context: .
-      target: development
-    volumes:
-      - .:/usr/src/app
-      - /usr/src/app/node_modules
-    ports:
-      - '3000:3000'
-      - '9229:9229'
-    command: npm run start:dev
-    env_file:
-      - .env
-    networks:
-      - nestjs_network
-    depends_on:
-      - postgres
-
-  postgres:
-    container_name: nestjs_db
-    image: postgres:latest
-    networks:
-      - nestjs_network
+      dockerfile: Dockerfile.postgres
     environment:
-      POSTGRES_USER: ${DB_USERNAME}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_DB: your_database
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
-      - '5432:5432'
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-
-networks:
-  nestjs_network:
 
 volumes:
   postgres_data:
