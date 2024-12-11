@@ -3,6 +3,9 @@ FROM node:18-alpine As development
 # Create app directory
 WORKDIR /usr/src/app
 
+# Install NestJS CLI
+RUN npm i -g @nestjs/cli
+
 # Copy application dependency manifests
 COPY package*.json ./
 
@@ -12,23 +15,25 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Build the application
+# Generate prisma client
 RUN npm run build
 
-FROM node:18-alpine As production
+FROM node:18-alpine as production
 
-# Create app directory
+ARG NODE_ENV=production
+ENV NODE_ENV=${NODE_ENV}
+
 WORKDIR /usr/src/app
 
-# Copy application dependency manifests
+# Install NestJS CLI
+RUN npm i -g @nestjs/cli
+
 COPY package*.json ./
 
-# Install production dependencies
+# Install only production dependencies
 RUN npm ci --only=production
 
-# Copy built application
+# Copy the bundled code from builder stage
 COPY --from=development /usr/src/app/dist ./dist
-
-EXPOSE 3000
 
 CMD ["node", "dist/main"]
