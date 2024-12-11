@@ -80,3 +80,205 @@
 {"context":"RouterExplorer","level":"info","message":"Mapped {/tenants/:id, PATCH} route","timestamp":"2024-12-11T14:58:43.564Z"}
 {"context":"RouterExplorer","level":"info","message":"Mapped {/tenants/:id, DELETE} route","timestamp":"2024-12-11T14:58:43.564Z"}
 {"context":"NestApplication","level":"info","message":"Nest application successfully started","timestamp":"2024-12-11T14:58:43.566Z"}
+[32m{[39m
+[32m  context: 'NestFactory',[39m
+[32m  level: 'info',[39m
+[32m  message: 'Starting Nest application...',[39m
+[32m  timestamp: '2024-12-11T15:19:13.562Z',[39m
+[32m  ms: '+7ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'InstanceLoader',[39m
+[32m  level: 'info',[39m
+[32m  message: 'AppModule dependencies initialized',[39m
+[32m  timestamp: '2024-12-11T15:19:13.668Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'InstanceLoader',[39m
+[32m  level: 'info',[39m
+[32m  message: 'TypeOrmModule dependencies initialized',[39m
+[32m  timestamp: '2024-12-11T15:19:13.669Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'InstanceLoader',[39m
+[32m  level: 'info',[39m
+[32m  message: 'ConfigHostModule dependencies initialized',[39m
+[32m  timestamp: '2024-12-11T15:19:13.669Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'InstanceLoader',[39m
+[32m  level: 'info',[39m
+[32m  message: 'JwtModule dependencies initialized',[39m
+[32m  timestamp: '2024-12-11T15:19:13.670Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'InstanceLoader',[39m
+[32m  level: 'info',[39m
+[32m  message: 'ConfigModule dependencies initialized',[39m
+[32m  timestamp: '2024-12-11T15:19:13.671Z',[39m
+[32m  ms: '+1ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'InstanceLoader',[39m
+[32m  level: 'info',[39m
+[32m  message: 'TypeOrmCoreModule dependencies initialized',[39m
+[32m  timestamp: '2024-12-11T15:19:13.992Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'InstanceLoader',[39m
+[32m  level: 'info',[39m
+[32m  message: 'TypeOrmModule dependencies initialized',[39m
+[32m  timestamp: '2024-12-11T15:19:13.993Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'InstanceLoader',[39m
+[32m  level: 'info',[39m
+[32m  message: 'TypeOrmModule dependencies initialized',[39m
+[32m  timestamp: '2024-12-11T15:19:13.994Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'InstanceLoader',[39m
+[32m  level: 'info',[39m
+[32m  message: 'AuthModule dependencies initialized',[39m
+[32m  timestamp: '2024-12-11T15:19:13.997Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'InstanceLoader',[39m
+[32m  level: 'info',[39m
+[32m  message: 'UsersModule dependencies initialized',[39m
+[32m  timestamp: '2024-12-11T15:19:13.997Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'InstanceLoader',[39m
+[32m  level: 'info',[39m
+[32m  message: 'TenantsModule dependencies initialized',[39m
+[32m  timestamp: '2024-12-11T15:19:13.998Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'RoutesResolver',[39m
+[32m  level: 'info',[39m
+[32m  message: 'AuthController {/auth}:',[39m
+[32m  timestamp: '2024-12-11T15:19:14.038Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'RouterExplorer',[39m
+[32m  level: 'info',[39m
+[32m  message: 'Mapped {/auth/login, POST} route',[39m
+[32m  timestamp: '2024-12-11T15:19:14.040Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'RoutesResolver',[39m
+[32m  level: 'info',[39m
+[32m  message: 'UsersController {/users}:',[39m
+[32m  timestamp: '2024-12-11T15:19:14.041Z',[39m
+[32m  ms: '+1ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'RouterExplorer',[39m
+[32m  level: 'info',[39m
+[32m  message: 'Mapped {/users, POST} route',[39m
+[32m  timestamp: '2024-12-11T15:19:14.041Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'RouterExplorer',[39m
+[32m  level: 'info',[39m
+[32m  message: 'Mapped {/users, GET} route',[39m
+[32m  timestamp: '2024-12-11T15:19:14.042Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'RouterExplorer',[39m
+[32m  level: 'info',[39m
+[32m  message: 'Mapped {/users/:id, GET} route',[39m
+[32m  timestamp: '2024-12-11T15:19:14.042Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'RouterExplorer',[39m
+[32m  level: 'info',[39m
+[32m  message: 'Mapped {/users/:id, PATCH} route',[39m
+[32m  timestamp: '2024-12-11T15:19:14.043Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'RouterExplorer',[39m
+[32m  level: 'info',[39m
+[32m  message: 'Mapped {/users/:id, DELETE} route',[39m
+[32m  timestamp: '2024-12-11T15:19:14.044Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'RoutesResolver',[39m
+[32m  level: 'info',[39m
+[32m  message: 'TenantsController {/tenants}:',[39m
+[32m  timestamp: '2024-12-11T15:19:14.044Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'RouterExplorer',[39m
+[32m  level: 'info',[39m
+[32m  message: 'Mapped {/tenants, POST} route',[39m
+[32m  timestamp: '2024-12-11T15:19:14.045Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'RouterExplorer',[39m
+[32m  level: 'info',[39m
+[32m  message: 'Mapped {/tenants, GET} route',[39m
+[32m  timestamp: '2024-12-11T15:19:14.045Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'RouterExplorer',[39m
+[32m  level: 'info',[39m
+[32m  message: 'Mapped {/tenants/:id, GET} route',[39m
+[32m  timestamp: '2024-12-11T15:19:14.046Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'RouterExplorer',[39m
+[32m  level: 'info',[39m
+[32m  message: 'Mapped {/tenants/:id, PATCH} route',[39m
+[32m  timestamp: '2024-12-11T15:19:14.047Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'RouterExplorer',[39m
+[32m  level: 'info',[39m
+[32m  message: 'Mapped {/tenants/:id, DELETE} route',[39m
+[32m  timestamp: '2024-12-11T15:19:14.047Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: 'NestApplication',[39m
+[32m  level: 'info',[39m
+[32m  message: 'Nest application successfully started',[39m
+[32m  timestamp: '2024-12-11T15:19:14.051Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m
+[32m{[39m
+[32m  context: undefined,[39m
+[32m  level: 'info',[39m
+[32m  message: '\n' +[39m
+[32m    '====================================================\n' +[39m
+[32m    '🚀 NestJS Multi-Tenant API Started Successfully!\n' +[39m
+[32m    '----------------------------------------------------\n' +[39m
+[32m    '🌐 API URL: http://localhost:3000\n' +[39m
+[32m    '📚 Swagger Docs: http://localhost:3000/api/docs\n' +[39m
+[32m    '====================================================\n',[39m
+[32m  timestamp: '2024-12-11T15:19:14.058Z',[39m
+[32m  ms: '+0ms'[39m
+[32m}[39m

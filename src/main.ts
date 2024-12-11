@@ -1,9 +1,9 @@
-import { NestFactory } from '@nestjs/common';
-import { ValidationPipe } from '@nestjs/common';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { WinstonModule } from 'nest-winston';
-import { AppModule } from './app.module';
-import { winstonConfig, logStartupMessage } from './config/winston.config';
+import { NestFactory } from "@nestjs/core";
+import { ValidationPipe } from "@nestjs/common";
+import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
+import { WinstonModule } from "nest-winston";
+import { AppModule } from "./app.module";
+import { winstonConfig, logStartupMessage } from "./config/winston.config";
 
 async function bootstrap() {
   // Create the app with Winston logger
@@ -12,16 +12,19 @@ async function bootstrap() {
   });
 
   // Enable validation pipes
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-  }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    })
+  );
 
   // Swagger configuration
   const config = new DocumentBuilder()
-    .setTitle('NestJS Multi-Tenant API')
-    .setDescription(`
+    .setTitle("NestJS Multi-Tenant API")
+    .setDescription(
+      `
       🚀 Welcome to the NestJS Multi-Tenant API Documentation!
 
       This API provides a secure, multi-tenant system with the following features:
@@ -41,43 +44,44 @@ async function bootstrap() {
       2. Create a user in the tenant
       3. Login to get JWT token
       4. Use the token for authenticated requests
-    `)
-    .setVersion('1.0')
+    `
+    )
+    .setVersion("1.0")
     .addBearerAuth(
       {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-        description: 'Enter your JWT token',
+        type: "http",
+        scheme: "bearer",
+        bearerFormat: "JWT",
+        description: "Enter your JWT token",
       },
-      'JWT-auth',
+      "JWT-auth"
     )
     .addApiKey(
       {
-        type: 'apiKey',
-        name: 'x-tenant-id',
-        in: 'header',
-        description: 'Enter your tenant ID',
+        type: "apiKey",
+        name: "x-tenant-id",
+        in: "header",
+        description: "Enter your tenant ID",
       },
-      'tenant-id',
+      "tenant-id"
     )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  
+
   // Add custom CSS to Swagger UI
   const customOptions = {
-    customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'NestJS Multi-Tenant API Docs',
+    customCss: ".swagger-ui .topbar { display: none }",
+    customSiteTitle: "NestJS Multi-Tenant API Docs",
   };
 
-  SwaggerModule.setup('api/docs', app, document, customOptions);
+  SwaggerModule.setup("api/docs", app, document, customOptions);
 
   // Enable CORS
   app.enableCors();
 
   // Parse PORT environment variable to number with fallback
-  const port = parseInt(process.env.PORT || '3000', 10);
+  const port = parseInt(process.env.PORT || "3000", 10);
   await app.listen(port);
 
   // Log startup message
