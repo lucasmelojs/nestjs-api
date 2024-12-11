@@ -1,4 +1,4 @@
-FROM node:18-alpine As development
+FROM node:18-alpine AS development
 
 # Create app directory
 WORKDIR /usr/src/app
@@ -18,7 +18,7 @@ COPY . .
 # Generate prisma client
 RUN npm run build
 
-FROM node:18-alpine as production
+FROM node:18-alpine AS production
 
 ARG NODE_ENV=production
 ENV NODE_ENV=${NODE_ENV}
