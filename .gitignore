@@ -39,3 +39,4 @@ lerna-debug.log*
 
 # Docker
 /postgres_data
+package-lock.json
