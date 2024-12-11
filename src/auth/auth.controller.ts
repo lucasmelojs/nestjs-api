@@ -1,58 +1,49 @@
-import { Controller, Post, Body, UnauthorizedException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiHeader } from '@nestjs/swagger';
+import { Body, Controller, Post, HttpCode, HttpStatus, UseGuards, Request, Get } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { CreateUserDto } from '../users/dto/create-user.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RefreshTokenGuard } from './guards/refresh-token.guard';
+import { Public } from './decorators/public.decorator';
 
-@ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  @Public()
   @Post('login')
-  @ApiOperation({
-    summary: 'Authenticate user',
-    description: 'Login with email and password to receive JWT token',
-  })
-  @ApiHeader({
-    name: 'x-tenant-id',
-    description: 'Tenant ID',
-    required: true,
-    example: '550e8400-e29b-41d4-a716-446655440000',
-  })
-  @ApiBody({
-    type: LoginDto,
-    description: 'User credentials',
-    examples: {
-      userLogin: {
-        summary: 'Basic user login',
-        description: 'Example of user login credentials',
-        value: {
-          email: 'user@example.com',
-          password: 'Password123!',
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'User successfully authenticated',
-    type: AuthResponseDto,
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Invalid credentials or tenant',
-  })
-  async login(@Body() loginDto: LoginDto) {
-    try {
-      const user = await this.authService.validateUser(
-        loginDto.tenantId,
-        loginDto.email,
-        loginDto.password,
-      );
-      return this.authService.login(user);
-    } catch (error) {
-      throw new UnauthorizedException(error.message);
-    }
+  @HttpCode(HttpStatus.OK)
+  async login(@Body() loginDto: LoginDto): Promise<AuthResponseDto> {
+    return this.authService.login(loginDto);
+  }
+
+  @Public()
+  @Post('register')
+  async register(@Body() createUserDto: CreateUserDto): Promise<AuthResponseDto> {
+    return this.authService.register(createUserDto);
+  }
+
+  @UseGuards(RefreshTokenGuard)
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  async refreshTokens(@Request() req): Promise<AuthResponseDto> {
+    const userId = req.user.id;
+    const refreshToken = req.get('Authorization').replace('Bearer', '').trim();
+    return this.authService.refreshTokens(userId, refreshToken);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(@Request() req): Promise<void> {
+    const userId = req.user.id;
+    await this.authService.logout(userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('profile')
+  getProfile(@Request() req) {
+    return req.user;
   }
 }

@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
-import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
@@ -13,52 +12,71 @@ export class UsersService {
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
-    const user = this.usersRepository.create(createUserDto);
-    return await this.usersRepository.save(user);
+    const result = await this.usersRepository.query(
+      'SELECT register_user($1, $2, $3) as id',
+      [createUserDto.email, createUserDto.password, createUserDto.role || 'user']
+    );
+
+    return this.findById(result[0].id);
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return await this.usersRepository.findOne({
-      where: { email },
-      select: ['id', 'email', 'password', 'refresh_token'],
-    });
+    const users = await this.usersRepository.query(
+      'SELECT id, email, password, role FROM users WHERE email = $1',
+      [email]
+    );
+    return users[0] || null;
   }
 
   async findById(id: string): Promise<User | null> {
-    const user = await this.usersRepository.findOne({
-      where: { id },
-    });
+    const users = await this.usersRepository.query(
+      'SELECT id, email, role FROM users WHERE id = $1',
+      [id]
+    );
 
-    if (!user) {
+    if (!users[0]) {
       throw new NotFoundException('User not found');
     }
 
-    return user;
+    return users[0];
+  }
+
+  async validatePassword(password: string, hashedPassword: string): Promise<boolean> {
+    const result = await this.usersRepository.query(
+      'SELECT verify_password($1, $2) as valid',
+      [password, hashedPassword]
+    );
+    return result[0].valid;
   }
 
   async setRefreshToken(userId: string, refreshToken: string): Promise<void> {
-    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
-    await this.usersRepository.update(userId, {
-      refresh_token: hashedRefreshToken,
-    });
+    await this.usersRepository.query(
+      'SELECT update_refresh_token($1, $2)',
+      [userId, refreshToken]
+    );
   }
 
   async validateRefreshToken(userId: string, refreshToken: string): Promise<boolean> {
-    const user = await this.usersRepository.findOne({
-      where: { id: userId },
-      select: ['refresh_token'],
-    });
+    const users = await this.usersRepository.query(
+      'SELECT refresh_token FROM users WHERE id = $1',
+      [userId]
+    );
 
-    if (!user || !user.refresh_token) {
+    if (!users[0] || !users[0].refresh_token) {
       return false;
     }
 
-    return bcrypt.compare(refreshToken, user.refresh_token);
+    const result = await this.usersRepository.query(
+      'SELECT verify_password($1, $2) as valid',
+      [refreshToken, users[0].refresh_token]
+    );
+    return result[0].valid;
   }
 
   async removeRefreshToken(userId: string): Promise<void> {
-    await this.usersRepository.update(userId, {
-      refresh_token: null,
-    });
+    await this.usersRepository.query(
+      'SELECT update_refresh_token($1, NULL)',
+      [userId]
+    );
   }
 }
