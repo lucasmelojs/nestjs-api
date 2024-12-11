@@ -49,6 +49,6 @@ export class TenantsService {
   }
 
   async setTenantContext(tenantId: string): Promise<void> {
-    await this.tenantRepository.query('SET app.tenant_id = $1', [tenantId]);
+    await this.tenantRepository.query(`SET app.tenant_id = '${tenantId}'`);
   }
 }
