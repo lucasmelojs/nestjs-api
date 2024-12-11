@@ -6,43 +6,37 @@ services:
     build:
       context: .
       target: development
-      dockerfile: Dockerfile
-    ports:
-      - '3000:3000'
-      - '9229:9229'
-    depends_on:
-      - postgres
-    env_file:
-      - .env
-    environment:
-      - NODE_ENV=development
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
+    ports:
+      - '3000:3000'
+      - '9229:9229'
     command: npm run start:dev
+    env_file:
+      - .env
     networks:
       - nestjs_network
-    restart: unless-stopped
+    depends_on:
+      - postgres
 
   postgres:
     container_name: nestjs_db
     image: postgres:latest
-    ports:
-      - '5432:5432'
+    networks:
+      - nestjs_network
     environment:
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_DATABASE}
+    ports:
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - nestjs_network
-    restart: unless-stopped
-
-volumes:
-  postgres_data:
 
 networks:
   nestjs_network:
-    driver: bridge
+
+volumes:
+  postgres_data:
