@@ -1,6 +1,22 @@
 version: '3.8'
 
 services:
+  api:
+    build:
+      context: .
+      target: development
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=postgres
+    command: npm run start:dev
+
   postgres:
     build:
       context: .

@@ -1,33 +1,21 @@
-FROM node:18-alpine AS development
+# Base image
+FROM node:18-alpine As base
 
-# Create app directory
+# Development image
+FROM base AS development
 WORKDIR /usr/src/app
-
-# Copy application dependency manifests
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install
-
-# Copy source code
 COPY . .
-
-# Generate prisma client
 RUN npm run build
 
-FROM node:18-alpine AS production
-
+# Production image
+FROM base AS production
 ARG NODE_ENV=production
 ENV NODE_ENV=${NODE_ENV}
-
 WORKDIR /usr/src/app
-
 COPY package*.json ./
-
-# Install only production dependencies
-RUN npm ci --only=production
-
-# Copy the bundled code from builder stage
+RUN npm install --only=production
+COPY . .
 COPY --from=development /usr/src/app/dist ./dist
-
 CMD ["node", "dist/main"]

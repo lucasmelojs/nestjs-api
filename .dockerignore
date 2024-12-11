@@ -1,7 +1,10 @@
 node_modules
 npm-debug.log
-dist
-.env
+Dockefile*
+.dockerignore
 .git
 .gitignore
 README.md
+.env
+.env.*
+dist
