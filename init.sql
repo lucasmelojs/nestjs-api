@@ -1,6 +1,9 @@
 -- Enable pgcrypto extension
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- Create custom parameter for tenant isolation
+ALTER DATABASE nestjs_db SET app.tenant_id = '';
+
 -- Create function to hash password using pgcrypto
 CREATE OR REPLACE FUNCTION hash_password(password TEXT)
 RETURNS TEXT AS $$
