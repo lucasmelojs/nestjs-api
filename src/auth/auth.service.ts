@@ -40,7 +40,9 @@ export class AuthService {
       const payload: JwtPayload = {
         sub: user.id,
         email: user.email,
-        tenantId: user.tenantId
+        tenantId: user.tenantId,
+        firstName: user.firstName,
+        lastName: user.lastName
       };
 
       // Generate tokens
@@ -56,7 +58,8 @@ export class AuthService {
           id: user.id,
           email: user.email,
           firstName: user.firstName,
-          lastName: user.lastName
+          lastName: user.lastName,
+          tenantId: user.tenantId
         }
       };
     } catch (error) {
@@ -82,7 +85,9 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
-      tenantId: user.tenantId
+      tenantId: user.tenantId,
+      firstName: user.firstName,
+      lastName: user.lastName
     };
 
     const [accessToken, refreshToken] = await Promise.all([
@@ -97,7 +102,8 @@ export class AuthService {
         id: user.id,
         email: user.email,
         firstName: user.firstName,
-        lastName: user.lastName
+        lastName: user.lastName,
+        tenantId: user.tenantId
       }
     };
   }
