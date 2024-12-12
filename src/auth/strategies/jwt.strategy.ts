@@ -14,7 +14,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET', 'your-secret-key'),
+      secretOrKey: configService.get<string>('JWT_SECRET', 'test-secret-key-make-this-longer-for-production'),
     });
     console.log('JWT Strategy initialized with secret:', this.configService.get<string>('JWT_SECRET'));
   }
@@ -23,9 +23,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     try {
       console.log('Validating JWT payload:', payload);
 
+      if (!payload.tenantId) {
+        console.log('No tenantId in JWT payload');
+        throw new UnauthorizedException('Invalid token');
+      }
+
       const user = await this.userRepository.findByEmail(
         payload.email,
-        payload.tenantId,
+        payload.tenantId
       );
 
       if (!user) {
