@@ -22,10 +22,12 @@ describe('AuthController (e2e)', () => {
   };
 
   beforeAll(async () => {
+    // Create the testing module
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
+    // Create and configure the app
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(
       new ValidationPipe({
@@ -37,7 +39,12 @@ describe('AuthController (e2e)', () => {
 
     await app.init();
 
+    // Get database service
     dbService = moduleFixture.get<DatabaseService>(DatabaseService);
+    
+    // Clean up any existing test data
+    await dbService.query('DELETE FROM users WHERE email = $1', [testUser.email]);
+    await dbService.query('DELETE FROM tenants WHERE slug = $1', [testTenant.slug]);
 
     // Create test tenant
     const { rows: [tenant] } = await dbService.query(
