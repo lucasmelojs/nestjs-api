@@ -9,6 +9,7 @@ describe('AuthService', () => {
   let service: AuthService;
   let userRepository: UserRepository;
   let jwtService: JwtService;
+  let configService: ConfigService;
 
   const mockUser = {
     id: '123',
@@ -26,12 +27,24 @@ describe('AuthService', () => {
   };
 
   const mockJwtService = {
-    signAsync: jest.fn(),
+    signAsync: jest.fn().mockImplementation((payload, options) => {
+      // Return different tokens based on expiration time
+      if (options?.expiresIn === '7d') {
+        return Promise.resolve('refresh-token');
+      }
+      return Promise.resolve('access-token');
+    }),
     verifyAsync: jest.fn(),
   };
 
   const mockConfigService = {
-    get: jest.fn(),
+    get: jest.fn().mockImplementation((key: string) => {
+      const config = {
+        'JWT_EXPIRATION': '15m',
+        'JWT_REFRESH_EXPIRATION': '7d'
+      };
+      return config[key];
+    }),
   };
 
   beforeEach(async () => {
@@ -56,6 +69,7 @@ describe('AuthService', () => {
     service = module.get<AuthService>(AuthService);
     userRepository = module.get<UserRepository>(UserRepository);
     jwtService = module.get<JwtService>(JwtService);
+    configService = module.get<ConfigService>(ConfigService);
   });
 
   describe('validateUser', () => {
@@ -97,12 +111,6 @@ describe('AuthService', () => {
       tenantId: '456',
     };
 
-    beforeEach(() => {
-      mockJwtService.signAsync.mockImplementation((payload, options) => {
-        return options?.expiresIn === '7d' ? 'refresh-token' : 'access-token';
-      });
-    });
-
     it('should return tokens and user data on successful login', async () => {
       mockUserRepository.findByEmail.mockResolvedValue(mockUser);
       mockUserRepository.verifyPassword.mockResolvedValue(true);
@@ -119,6 +127,16 @@ describe('AuthService', () => {
           lastName: mockUser.lastName,
         },
       });
+
+      // Verify JWT service was called correctly
+      expect(jwtService.signAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sub: mockUser.id,
+          email: mockUser.email,
+          tenantId: mockUser.tenantId,
+        }),
+        expect.any(Object)
+      );
     });
   });
 
@@ -142,9 +160,6 @@ describe('AuthService', () => {
     it('should create user and return tokens on successful registration', async () => {
       mockUserRepository.findByEmail.mockResolvedValue(null);
       mockUserRepository.create.mockResolvedValue(mockUser);
-      mockJwtService.signAsync.mockImplementation((payload, options) => {
-        return options?.expiresIn === '7d' ? 'refresh-token' : 'access-token';
-      });
 
       const result = await service.register(registerDto);
 
@@ -158,6 +173,19 @@ describe('AuthService', () => {
           lastName: mockUser.lastName,
         },
       });
+
+      // Verify create was called
+      expect(mockUserRepository.create).toHaveBeenCalledWith(registerDto);
+
+      // Verify JWT service was called correctly
+      expect(jwtService.signAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sub: mockUser.id,
+          email: mockUser.email,
+          tenantId: mockUser.tenantId,
+        }),
+        expect.any(Object)
+      );
     });
   });
 });
