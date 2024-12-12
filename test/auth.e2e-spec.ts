@@ -2,12 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { DatabaseService } from '../src/database/database.service';
-import { setupTestDatabase, cleanupTestDatabase } from './utils/database';
+import { setupTestDatabase, cleanupTestDatabase, getTestDbClient } from './utils/database';
+import { Pool } from 'pg';
 
 describe('AuthController (e2e)', () => {
   let app: INestApplication;
-  let dbService: DatabaseService;
+  let dbPool: Pool;
 
   const testTenant = {
     name: 'Test Tenant',
@@ -25,6 +25,7 @@ describe('AuthController (e2e)', () => {
   beforeAll(async () => {
     // Setup test database schema
     await setupTestDatabase();
+    dbPool = await getTestDbClient();
 
     // Create the testing module
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -43,16 +44,13 @@ describe('AuthController (e2e)', () => {
 
     await app.init();
 
-    // Get database service
-    dbService = moduleFixture.get<DatabaseService>(DatabaseService);
-    
     try {
       // Clean up any existing test data
-      await dbService.query('DELETE FROM users WHERE email = $1', [testUser.email]);
-      await dbService.query('DELETE FROM tenants WHERE slug = $1', [testTenant.slug]);
+      await dbPool.query('DELETE FROM users WHERE email = $1', [testUser.email]);
+      await dbPool.query('DELETE FROM tenants WHERE slug = $1', [testTenant.slug]);
 
       // Create test tenant
-      const { rows: [tenant] } = await dbService.query(
+      const { rows: [tenant] } = await dbPool.query(
         'INSERT INTO tenants (name, slug) VALUES ($1, $2) RETURNING id',
         [testTenant.name, testTenant.slug],
       );
@@ -67,9 +65,13 @@ describe('AuthController (e2e)', () => {
   afterAll(async () => {
     try {
       // Cleanup test data
-      await dbService.query('DELETE FROM users WHERE email = $1', [testUser.email]);
-      await dbService.query('DELETE FROM tenants WHERE slug = $1', [testTenant.slug]);
-      await app.close();
+      if (dbPool) {
+        await dbPool.query('DELETE FROM users WHERE email = $1', [testUser.email]);
+        await dbPool.query('DELETE FROM tenants WHERE slug = $1', [testTenant.slug]);
+      }
+      if (app) {
+        await app.close();
+      }
       // Clean up database schema
       await cleanupTestDatabase();
     } catch (error) {
