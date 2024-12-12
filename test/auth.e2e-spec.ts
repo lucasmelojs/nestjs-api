@@ -18,6 +18,7 @@ describe('AuthController (e2e)', () => {
     password: 'Password123!',
     firstName: 'John',
     lastName: 'Doe',
+    tenantId: '' // Will be set after tenant creation
   };
 
   beforeAll(async () => {
@@ -43,7 +44,7 @@ describe('AuthController (e2e)', () => {
       'INSERT INTO tenants (name, slug) VALUES ($1, $2) RETURNING id',
       [testTenant.name, testTenant.slug],
     );
-    testUser['tenantId'] = tenant.id;
+    testUser.tenantId = tenant.id;
   });
 
   afterAll(async () => {
