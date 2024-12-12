@@ -1,31 +1,35 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { UsersService } from '../users/users.service';
-import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
-import * as bcrypt from 'bcrypt';
-import { Tokens } from './interfaces/tokens.interface';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { UsersService } from "../users/users.service";
+import { LoginDto } from "./dto/login.dto";
+import { RegisterDto } from "./dto/register.dto";
+import * as bcrypt from "bcrypt";
+import { Tokens } from "./interfaces/tokens.interface";
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
-    private jwtService: JwtService,
+    private jwtService: JwtService
   ) {}
 
   async login(loginDto: LoginDto): Promise<Tokens> {
     const user = await this.usersService.findByEmail(loginDto.email);
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
 
     const isPasswordValid = await bcrypt.compare(
       loginDto.password,
-      user.password,
+      user.password
     );
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
 
     const tokens = await this.generateTokens(user.id, user.email);
@@ -37,7 +41,7 @@ export class AuthService {
   async register(registerDto: RegisterDto): Promise<Tokens> {
     const existingUser = await this.usersService.findByEmail(registerDto.email);
     if (existingUser) {
-      throw new ConflictException('Email already exists');
+      throw new ConflictException("Email already exists");
     }
 
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
@@ -55,16 +59,16 @@ export class AuthService {
   async refreshTokens(userId: string, refreshToken: string): Promise<Tokens> {
     const user = await this.usersService.findById(userId);
     if (!user) {
-      throw new UnauthorizedException('User not found');
+      throw new UnauthorizedException("User not found");
     }
 
     const isRefreshTokenValid = await this.usersService.validateRefreshToken(
       userId,
-      refreshToken,
+      refreshToken
     );
 
     if (!isRefreshTokenValid) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException("Invalid refresh token");
     }
 
     const tokens = await this.generateTokens(user.id, user.email);
@@ -86,8 +90,8 @@ export class AuthService {
         },
         {
           secret: process.env.JWT_SECRET,
-          expiresIn: '15m',
-        },
+          expiresIn: "15m",
+        }
       ),
       this.jwtService.signAsync(
         {
@@ -96,8 +100,8 @@ export class AuthService {
         },
         {
           secret: process.env.JWT_REFRESH_SECRET,
-          expiresIn: '7d',
-        },
+          expiresIn: "7d",
+        }
       ),
     ]);
 
