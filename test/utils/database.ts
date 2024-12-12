@@ -1,22 +1,64 @@
-import { Pool } from 'pg';
+import { Pool, PoolConfig } from 'pg';
 import * as fs from 'fs';
 import * as path from 'path';
 
 let pool: Pool;
 
+const getPoolConfig = (): PoolConfig => ({
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '5433'),
+  user: process.env.DB_USER || 'postgres_test',
+  password: process.env.DB_PASSWORD || 'postgres_test',
+  database: process.env.DB_NAME || 'nestjs_auth_test',
+  // Add some reasonable pool defaults
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+
+async function createPool(): Promise<Pool> {
+  if (pool) {
+    try {
+      const client = await pool.connect();
+      client.release();
+      return pool;
+    } catch (e) {
+      console.log('Existing pool is invalid, creating new pool...');
+    }
+  }
+
+  pool = new Pool(getPoolConfig());
+  return pool;
+}
+
+async function executeSqlFile(filePath: string): Promise<void> {
+  const content = fs.readFileSync(filePath, 'utf8');
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+    await client.query(content);
+    await client.query('COMMIT');
+    console.log(`Successfully executed ${path.basename(filePath)}`);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error(`Error executing ${path.basename(filePath)}:`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export async function setupTestDatabase() {
   try {
-    // Wait for database to be ready
-    await waitForDatabase();
+    console.log('Setting up test database...');
+    pool = await createPool();
 
-    // Create pool
-    pool = new Pool({
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT || '5433'),
-      user: process.env.DB_USER || 'postgres_test',
-      password: process.env.DB_PASSWORD || 'postgres_test',
-      database: process.env.DB_NAME || 'nestjs_auth_test',
-    });
+    // Test the connection
+    const client = await pool.connect();
+    await client.query('SELECT 1');
+    client.release();
+    console.log('Database connection established');
 
     // Read and execute schema files
     const schemaDir = path.join(__dirname, '../../init-scripts');
@@ -26,62 +68,45 @@ export async function setupTestDatabase() {
 
     for (const file of schemaFiles) {
       const filePath = path.join(schemaDir, file);
-      const schema = fs.readFileSync(filePath, 'utf8');
-      await pool.query(schema);
-      console.log(`Executed schema file: ${file}`);
+      await executeSqlFile(filePath);
     }
 
-    console.log('Test database schema created successfully');
+    console.log('Test database setup completed successfully');
   } catch (error) {
-    console.error('Error setting up test database:', error);
+    console.error('Failed to set up test database:', error);
+    if (pool) {
+      await pool.end();
+      pool = null;
+    }
     throw error;
   }
 }
 
 export async function cleanupTestDatabase() {
   try {
-    if (!pool) {
-      pool = new Pool({
-        host: process.env.DB_HOST || 'localhost',
-        port: parseInt(process.env.DB_PORT || '5433'),
-        user: process.env.DB_USER || 'postgres_test',
-        password: process.env.DB_PASSWORD || 'postgres_test',
-        database: process.env.DB_NAME || 'nestjs_auth_test',
-      });
-    }
+    console.log('Cleaning up test database...');
+    pool = await createPool();
 
-    await pool.query('DROP SCHEMA public CASCADE');
-    await pool.query('CREATE SCHEMA public');
-    console.log('Test database cleaned up successfully');
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DROP SCHEMA public CASCADE');
+      await client.query('CREATE SCHEMA public');
+      await client.query('COMMIT');
+      console.log('Test database cleaned up successfully');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   } catch (error) {
-    console.error('Error cleaning up test database:', error);
+    console.error('Failed to clean up test database:', error);
     throw error;
   } finally {
     if (pool) {
       await pool.end();
-    }
-  }
-}
-
-async function waitForDatabase(retries = 5, interval = 2000): Promise<void> {
-  const testConnection = new Pool({
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5433'),
-    user: process.env.DB_USER || 'postgres_test',
-    password: process.env.DB_PASSWORD || 'postgres_test',
-    database: process.env.DB_NAME || 'nestjs_auth_test',
-  });
-
-  for (let i = 0; i < retries; i++) {
-    try {
-      await testConnection.query('SELECT 1');
-      await testConnection.end();
-      console.log('Database is ready');
-      return;
-    } catch (error) {
-      console.log(`Database not ready, attempt ${i + 1} of ${retries}`);
-      if (i === retries - 1) throw error;
-      await new Promise(resolve => setTimeout(resolve, interval));
+      pool = null;
     }
   }
 }
