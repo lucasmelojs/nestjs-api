@@ -81,8 +81,6 @@ describe('AuthController (e2e)', () => {
   });
 
   describe('/auth/register (POST)', () => {
-    let userId: string;
-
     it('should register a new user', async () => {
       const response = await request(app.getHttpServer())
         .post('/auth/register')
@@ -93,17 +91,14 @@ describe('AuthController (e2e)', () => {
       expect(response.body.data).toHaveProperty('refreshToken');
       expect(response.body.data.user).toHaveProperty('email', testUser.email);
       
-      // Store the user ID for verification
-      userId = response.body.data.user.id;
-      console.log('User registered successfully with ID:', userId);
-
-      // Verify user exists in database
+      // Verify user in database
       const { rows: [user] } = await dbPool.query(
-        'SELECT * FROM users WHERE id = $1',
-        [userId]
+        'SELECT * FROM users WHERE email = $1 AND tenant_id = $2',
+        [testUser.email, testUser.tenantId]
       );
       expect(user).toBeTruthy();
       expect(user.email).toBe(testUser.email);
+      console.log('User registered and verified in database');
     });
 
     it('should fail to register with existing email', () => {
@@ -116,26 +111,28 @@ describe('AuthController (e2e)', () => {
 
   describe('/auth/login (POST)', () => {
     it('should login successfully', async () => {
+      const loginDto = {
+        email: testUser.email,
+        password: testUser.password,
+        tenantId: testUser.tenantId,
+      };
+
+      // Verify user exists before login
+      const { rows: [existingUser] } = await dbPool.query(
+        'SELECT * FROM users WHERE email = $1 AND tenant_id = $2',
+        [loginDto.email, loginDto.tenantId]
+      );
+      expect(existingUser).toBeTruthy();
+      console.log('User found in database before login:', existingUser.email);
+
       const response = await request(app.getHttpServer())
         .post('/auth/login')
-        .send({
-          email: testUser.email,
-          password: testUser.password,
-          tenantId: testUser.tenantId,
-        })
+        .send(loginDto)
         .expect(200);
 
       expect(response.body.data).toHaveProperty('accessToken');
       expect(response.body.data).toHaveProperty('refreshToken');
       expect(response.body.data.user).toHaveProperty('email', testUser.email);
-
-      // Verify user in database
-      const { rows: [user] } = await dbPool.query(
-        'SELECT * FROM users WHERE email = $1 AND tenant_id = $2',
-        [testUser.email, testUser.tenantId]
-      );
-      expect(user).toBeTruthy();
-      console.log('User verified in database before login test');
     });
 
     it('should fail with wrong password', () => {
@@ -155,22 +152,16 @@ describe('AuthController (e2e)', () => {
 
     beforeAll(async () => {
       console.log('Getting access token for /me endpoint test');
-      
-      // Verify user exists before login
-      const { rows: [user] } = await dbPool.query(
-        'SELECT * FROM users WHERE email = $1 AND tenant_id = $2',
-        [testUser.email, testUser.tenantId]
-      );
-      expect(user).toBeTruthy();
-      console.log('User verified in database before getting token');
 
+      // Login to get token
       const loginResponse = await request(app.getHttpServer())
         .post('/auth/login')
         .send({
           email: testUser.email,
           password: testUser.password,
           tenantId: testUser.tenantId,
-        });
+        })
+        .expect(200);
 
       expect(loginResponse.body.data).toHaveProperty('accessToken');
       accessToken = loginResponse.body.data.accessToken;
