@@ -12,18 +12,18 @@ import { RepositoriesModule } from '../repositories/repositories.module';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET'),
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET', 'your-secret-key'),
         signOptions: {
           expiresIn: configService.get<string>('JWT_EXPIRATION', '15m'),
         },
       }),
-      inject: [ConfigService],
     }),
     RepositoriesModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
-  exports: [AuthService],
+  exports: [AuthService, JwtStrategy],
 })
 export class AuthModule {}
