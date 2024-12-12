@@ -3,6 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { DatabaseService } from '../src/database/database.service';
+import { setupTestDatabase, cleanupTestDatabase } from './utils/database';
 
 describe('AuthController (e2e)', () => {
   let app: INestApplication;
@@ -22,6 +23,9 @@ describe('AuthController (e2e)', () => {
   };
 
   beforeAll(async () => {
+    // Setup test database schema
+    await setupTestDatabase();
+
     // Create the testing module
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -42,36 +46,47 @@ describe('AuthController (e2e)', () => {
     // Get database service
     dbService = moduleFixture.get<DatabaseService>(DatabaseService);
     
-    // Clean up any existing test data
-    await dbService.query('DELETE FROM users WHERE email = $1', [testUser.email]);
-    await dbService.query('DELETE FROM tenants WHERE slug = $1', [testTenant.slug]);
+    try {
+      // Clean up any existing test data
+      await dbService.query('DELETE FROM users WHERE email = $1', [testUser.email]);
+      await dbService.query('DELETE FROM tenants WHERE slug = $1', [testTenant.slug]);
 
-    // Create test tenant
-    const { rows: [tenant] } = await dbService.query(
-      'INSERT INTO tenants (name, slug) VALUES ($1, $2) RETURNING id',
-      [testTenant.name, testTenant.slug],
-    );
-    testUser.tenantId = tenant.id;
+      // Create test tenant
+      const { rows: [tenant] } = await dbService.query(
+        'INSERT INTO tenants (name, slug) VALUES ($1, $2) RETURNING id',
+        [testTenant.name, testTenant.slug],
+      );
+      testUser.tenantId = tenant.id;
+    } catch (error) {
+      console.error('Error in test setup:', error);
+      throw error;
+    }
   });
 
   afterAll(async () => {
-    // Cleanup test data
-    await dbService.query('DELETE FROM users WHERE email = $1', [testUser.email]);
-    await dbService.query('DELETE FROM tenants WHERE slug = $1', [testTenant.slug]);
-    await app.close();
+    try {
+      // Cleanup test data
+      await dbService.query('DELETE FROM users WHERE email = $1', [testUser.email]);
+      await dbService.query('DELETE FROM tenants WHERE slug = $1', [testTenant.slug]);
+      await app.close();
+      // Clean up database schema
+      await cleanupTestDatabase();
+    } catch (error) {
+      console.error('Error in test cleanup:', error);
+      throw error;
+    }
   });
 
   describe('/auth/register (POST)', () => {
-    it('should register a new user', () => {
-      return request(app.getHttpServer())
+    it('should register a new user', async () => {
+      const response = await request(app.getHttpServer())
         .post('/auth/register')
         .send(testUser)
-        .expect(201)
-        .expect((res) => {
-          expect(res.body.data).toHaveProperty('accessToken');
-          expect(res.body.data).toHaveProperty('refreshToken');
-          expect(res.body.data.user).toHaveProperty('email', testUser.email);
-        });
+        .expect(201);
+
+      expect(response.body.data).toHaveProperty('accessToken');
+      expect(response.body.data).toHaveProperty('refreshToken');
+      expect(response.body.data.user).toHaveProperty('email', testUser.email);
     });
 
     it('should fail to register with existing email', () => {
@@ -83,20 +98,19 @@ describe('AuthController (e2e)', () => {
   });
 
   describe('/auth/login (POST)', () => {
-    it('should login successfully', () => {
-      return request(app.getHttpServer())
+    it('should login successfully', async () => {
+      const response = await request(app.getHttpServer())
         .post('/auth/login')
         .send({
           email: testUser.email,
           password: testUser.password,
           tenantId: testUser.tenantId,
         })
-        .expect(200)
-        .expect((res) => {
-          expect(res.body.data).toHaveProperty('accessToken');
-          expect(res.body.data).toHaveProperty('refreshToken');
-          expect(res.body.data.user).toHaveProperty('email', testUser.email);
-        });
+        .expect(200);
+
+      expect(response.body.data).toHaveProperty('accessToken');
+      expect(response.body.data).toHaveProperty('refreshToken');
+      expect(response.body.data.user).toHaveProperty('email', testUser.email);
     });
 
     it('should fail with wrong password', () => {
@@ -123,19 +137,19 @@ describe('AuthController (e2e)', () => {
           tenantId: testUser.tenantId,
         });
 
+      expect(response.body.data).toHaveProperty('accessToken');
       accessToken = response.body.data.accessToken;
     });
 
-    it('should get current user profile', () => {
-      return request(app.getHttpServer())
+    it('should get current user profile', async () => {
+      const response = await request(app.getHttpServer())
         .get('/auth/me')
         .set('Authorization', `Bearer ${accessToken}`)
-        .expect(200)
-        .expect((res) => {
-          expect(res.body.data).toHaveProperty('email', testUser.email);
-          expect(res.body.data).toHaveProperty('firstName', testUser.firstName);
-          expect(res.body.data).toHaveProperty('lastName', testUser.lastName);
-        });
+        .expect(200);
+
+      expect(response.body.data).toHaveProperty('email', testUser.email);
+      expect(response.body.data).toHaveProperty('firstName', testUser.firstName);
+      expect(response.body.data).toHaveProperty('lastName', testUser.lastName);
     });
 
     it('should fail without token', () => {
