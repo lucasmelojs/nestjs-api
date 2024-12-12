@@ -4,6 +4,7 @@ import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
+import { RepositoriesModule } from './repositories/repositories.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { TimeoutInterceptor } from './common/interceptors/timeout.interceptor';
@@ -12,6 +13,7 @@ import { TimeoutInterceptor } from './common/interceptors/timeout.interceptor';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
     }),
     ThrottlerModule.forRoot([
       {
@@ -20,6 +22,7 @@ import { TimeoutInterceptor } from './common/interceptors/timeout.interceptor';
       },
     ]),
     DatabaseModule,
+    RepositoriesModule,
     AuthModule,
   ],
   providers: [
