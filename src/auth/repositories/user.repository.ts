@@ -9,7 +9,7 @@ export class UserRepository {
 
   async findByEmail(email: string, tenantId: string): Promise<User | null> {
     const { rows } = await this.db.query(
-      'SELECT * FROM users WHERE email = $1 AND tenant_id = $2',
+      'SELECT * FROM users WHERE email = $1 AND tenantId = $2',
       [email, tenantId]
     );
     return rows[0] || null;
@@ -19,10 +19,10 @@ export class UserRepository {
     const { rows } = await this.db.query(
       `INSERT INTO users (
         email,
-        password_hash,
-        first_name,
-        last_name,
-        tenant_id
+        passwordHash,
+        firstName,
+        lastName,
+        tenantId
       ) VALUES (
         $1,
         crypt($2, gen_salt('bf', 10)),
@@ -37,7 +37,7 @@ export class UserRepository {
 
   async verifyPassword(userId: string, password: string): Promise<boolean> {
     const { rows } = await this.db.query(
-      'SELECT verify_password($1, (SELECT password_hash FROM users WHERE id = $2)) as valid',
+      'SELECT verify_password($1, (SELECT passwordHash FROM users WHERE id = $2)) as valid',
       [password, userId]
     );
     return rows[0]?.valid || false;
@@ -45,7 +45,7 @@ export class UserRepository {
 
   async updateLastLogin(userId: string): Promise<void> {
     await this.db.query(
-      'UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1',
+      'UPDATE users SET lastLoginAt = CURRENT_TIMESTAMP WHERE id = $1',
       [userId]
     );
   }
