@@ -109,9 +109,7 @@ export class AuthService {
   }
 
   private async generateAccessToken(payload: JwtPayload): Promise<string> {
-    return this.jwtService.signAsync(payload, {
-      expiresIn: this.configService.get('JWT_EXPIRATION', '15m')
-    });
+    return this.jwtService.signAsync(payload);
   }
 
   private async generateRefreshToken(payload: JwtPayload): Promise<string> {
