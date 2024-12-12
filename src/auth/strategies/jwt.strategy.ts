@@ -14,29 +14,35 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET'),
+      secretOrKey: configService.get<string>('JWT_SECRET', 'your-secret-key'),
     });
+    console.log('JWT Strategy initialized with secret:', this.configService.get<string>('JWT_SECRET'));
   }
 
   async validate(payload: JwtPayload) {
     try {
+      console.log('Validating JWT payload:', payload);
+
       const user = await this.userRepository.findByEmail(
         payload.email,
         payload.tenantId,
       );
 
       if (!user) {
+        console.log('User not found in database');
         throw new UnauthorizedException('User not found');
       }
 
-      // Return the user data that will be available in the request
-      return {
+      const userData = {
         id: user.id,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
         tenantId: user.tenantId,
       };
+
+      console.log('User validated successfully:', userData);
+      return userData;
     } catch (error) {
       console.error('JWT validation error:', error);
       throw new UnauthorizedException('Token validation failed');
