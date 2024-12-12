@@ -15,15 +15,15 @@ CREATE TABLE tenants (
     slug VARCHAR(255) UNIQUE NOT NULL,
     description TEXT,
     status tenant_status DEFAULT 'active',
-    createdAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updatedAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create trigger function for updatedAt
+-- Create trigger function for updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updatedAt = CURRENT_TIMESTAMP;
+    NEW.updated_at = CURRENT_TIMESTAMP;
     RETURN NEW;
 END;
 $$ language 'plpgsql';
@@ -37,17 +37,17 @@ CREATE TRIGGER update_tenants_updated_at
 -- Create users table
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenantId UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     email VARCHAR(255) NOT NULL,
-    passwordHash TEXT NOT NULL,
-    firstName VARCHAR(100),
-    lastName VARCHAR(100),
+    password_hash TEXT NOT NULL,
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
     status user_status DEFAULT 'pending',
-    emailVerified BOOLEAN DEFAULT false,
-    lastLoginAt TIMESTAMPTZ,
-    createdAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updatedAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(tenantId, email)
+    email_verified BOOLEAN DEFAULT false,
+    last_login_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(tenant_id, email)
 );
 
 -- Add trigger to users table
@@ -73,7 +73,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Create indexes
-CREATE INDEX idx_users_tenant_email ON users(tenantId, email);
+CREATE INDEX idx_users_tenant_email ON users(tenant_id, email);
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_tenants_slug ON tenants(slug);
 
@@ -84,7 +84,7 @@ ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
 -- Create RLS Policies
 CREATE POLICY tenant_isolation_policy ON users
     FOR ALL
-    USING (tenantId = current_setting('app.current_tenant_id')::UUID);
+    USING (tenant_id = current_setting('app.current_tenant_id')::UUID);
 
 CREATE POLICY tenant_self_policy ON tenants
     FOR ALL
