@@ -29,6 +29,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         throw new UnauthorizedException('User not found');
       }
 
+      // Return the user data that will be available in the request
       return {
         id: user.id,
         email: user.email,
@@ -37,7 +38,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         tenantId: user.tenantId,
       };
     } catch (error) {
-      throw new UnauthorizedException('Invalid token');
+      console.error('JWT validation error:', error);
+      throw new UnauthorizedException('Token validation failed');
     }
   }
 }
