@@ -28,6 +28,16 @@ export class AuthService {
     return user;
   }
 
+  private createJwtPayload(user: any): JwtPayload {
+    return {
+      sub: user.id,
+      email: user.email,
+      tenantId: user.tenant_id, // Note: database column is snake_case
+      firstName: user.first_name,
+      lastName: user.last_name
+    };
+  }
+
   async login(loginDto: LoginDto) {
     try {
       const { email, password, tenantId } = loginDto;
@@ -37,13 +47,8 @@ export class AuthService {
       await this.userRepository.updateLastLogin(user.id);
 
       // Create JWT payload
-      const payload: JwtPayload = {
-        sub: user.id,
-        email: user.email,
-        tenantId: user.tenantId,
-        firstName: user.firstName,
-        lastName: user.lastName
-      };
+      const payload = this.createJwtPayload(user);
+      console.log('Creating login token with payload:', payload);
 
       // Generate tokens
       const [accessToken, refreshToken] = await Promise.all([
@@ -57,12 +62,13 @@ export class AuthService {
         user: {
           id: user.id,
           email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          tenantId: user.tenantId
+          firstName: user.first_name,
+          lastName: user.last_name,
+          tenantId: user.tenant_id
         }
       };
     } catch (error) {
+      console.error('Login error:', error);
       if (error instanceof UnauthorizedException) {
         throw error;
       }
@@ -81,14 +87,8 @@ export class AuthService {
     }
 
     const user = await this.userRepository.create(registerDto);
-
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      tenantId: user.tenantId,
-      firstName: user.firstName,
-      lastName: user.lastName
-    };
+    const payload = this.createJwtPayload(user);
+    console.log('Creating registration token with payload:', payload);
 
     const [accessToken, refreshToken] = await Promise.all([
       this.generateAccessToken(payload),
@@ -101,15 +101,17 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        tenantId: user.tenantId
+        firstName: user.first_name,
+        lastName: user.last_name,
+        tenantId: user.tenant_id
       }
     };
   }
 
   private async generateAccessToken(payload: JwtPayload): Promise<string> {
-    return this.jwtService.signAsync(payload);
+    return this.jwtService.signAsync(payload, {
+      expiresIn: this.configService.get('JWT_EXPIRATION', '15m')
+    });
   }
 
   private async generateRefreshToken(payload: JwtPayload): Promise<string> {
