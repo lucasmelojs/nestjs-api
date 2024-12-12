@@ -57,6 +57,7 @@ describe('AuthController (e2e)', () => {
         [testTenant.name, testTenant.slug],
       );
       testUser.tenantId = tenant.id;
+      console.log('Test tenant created:', tenant);
     } catch (error) {
       console.error('Error in test setup:', error);
       throw error;
@@ -87,6 +88,7 @@ describe('AuthController (e2e)', () => {
       expect(response.body.data).toHaveProperty('accessToken');
       expect(response.body.data).toHaveProperty('refreshToken');
       expect(response.body.data.user).toHaveProperty('email', testUser.email);
+      console.log('User registered successfully');
     });
 
     it('should fail to register with existing email', () => {
@@ -111,6 +113,7 @@ describe('AuthController (e2e)', () => {
       expect(response.body.data).toHaveProperty('accessToken');
       expect(response.body.data).toHaveProperty('refreshToken');
       expect(response.body.data.user).toHaveProperty('email', testUser.email);
+      console.log('User logged in successfully');
     });
 
     it('should fail with wrong password', () => {
@@ -129,7 +132,8 @@ describe('AuthController (e2e)', () => {
     let accessToken: string;
 
     beforeAll(async () => {
-      const response = await request(app.getHttpServer())
+      console.log('Getting access token for /me endpoint test');
+      const loginResponse = await request(app.getHttpServer())
         .post('/auth/login')
         .send({
           email: testUser.email,
@@ -137,11 +141,13 @@ describe('AuthController (e2e)', () => {
           tenantId: testUser.tenantId,
         });
 
-      expect(response.body.data).toHaveProperty('accessToken');
-      accessToken = response.body.data.accessToken;
+      expect(loginResponse.body.data).toHaveProperty('accessToken');
+      accessToken = loginResponse.body.data.accessToken;
+      console.log('Access token received:', accessToken);
     });
 
     it('should get current user profile', async () => {
+      console.log('Testing /me endpoint with token:', accessToken);
       const response = await request(app.getHttpServer())
         .get('/auth/me')
         .set('Authorization', `Bearer ${accessToken}`)
@@ -150,6 +156,7 @@ describe('AuthController (e2e)', () => {
       expect(response.body.data).toHaveProperty('email', testUser.email);
       expect(response.body.data).toHaveProperty('firstName', testUser.firstName);
       expect(response.body.data).toHaveProperty('lastName', testUser.lastName);
+      console.log('User profile retrieved successfully');
     });
 
     it('should fail without token', () => {
