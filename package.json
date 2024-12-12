@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "NestJS API with pgcrypto authentication",
   "scripts": {
+    "prebuild": "rimraf dist",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
@@ -14,8 +15,9 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
-    "test:e2e:watch": "jest --config ./test/jest-e2e.json --watch"
+    "pretest:e2e": "bash scripts/setup-test-env.sh",
+    "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
+    "test:e2e:watch": "jest --config ./test/jest-e2e.json --runInBand --watch"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
@@ -33,6 +35,7 @@
     "passport-jwt": "^4.0.1",
     "pg": "^8.11.1",
     "reflect-metadata": "^0.1.13",
+    "rimraf": "^5.0.1",
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
