@@ -32,9 +32,9 @@ export class AuthService {
     return {
       sub: user.id,
       email: user.email,
-      tenantId: user.tenant_id, // Note: database column is snake_case
-      firstName: user.first_name,
-      lastName: user.last_name
+      tenantId: user.tenantId,
+      firstName: user.firstName,
+      lastName: user.lastName
     };
   }
 
@@ -62,9 +62,9 @@ export class AuthService {
         user: {
           id: user.id,
           email: user.email,
-          firstName: user.first_name,
-          lastName: user.last_name,
-          tenantId: user.tenant_id
+          firstName: user.firstName,
+          lastName: user.lastName,
+          tenantId: user.tenantId
         }
       };
     } catch (error) {
@@ -101,9 +101,9 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        tenantId: user.tenant_id
+        firstName: user.firstName,
+        lastName: user.lastName,
+        tenantId: user.tenantId
       }
     };
   }
