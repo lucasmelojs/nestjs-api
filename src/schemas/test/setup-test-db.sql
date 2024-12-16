@@ -1,8 +1,24 @@
+-- Create test role if not exists
+DO
+$do$
+BEGIN
+   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'postgres_test') THEN
+      CREATE ROLE postgres_test WITH LOGIN PASSWORD 'postgres_test';
+   END IF;
+END
+$do$;
+
+-- Give necessary permissions to postgres_test
+ALTER ROLE postgres_test WITH SUPERUSER CREATEDB CREATEROLE;
+
 -- Drop test database if exists
 DROP DATABASE IF EXISTS nestjs_auth_test;
 
 -- Create test database
 CREATE DATABASE nestjs_auth_test;
+
+-- Give all privileges on test database to postgres_test
+GRANT ALL PRIVILEGES ON DATABASE nestjs_auth_test TO postgres_test;
 
 -- Connect to test database
 \c nestjs_auth_test;
@@ -41,6 +57,10 @@ CREATE TABLE IF NOT EXISTS auth_tokens (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     revoked_at TIMESTAMP WITH TIME ZONE
 );
+
+-- Grant all privileges on all tables to postgres_test
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO postgres_test;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO postgres_test;
 
 -- Insert test data
 INSERT INTO tenants (name, domain, status) VALUES
