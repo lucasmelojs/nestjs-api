@@ -1,10 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, MinLength, Matches } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength, Matches, IsOptional } from 'class-validator';
 
 export class RegisterDto {
   @ApiProperty({
-    description: 'Email address of the user',
-    example: 'admin@example.com',
+    description: 'Email address for the new account',
+    example: 'user@example.com',
     format: 'email',
     required: true,
   })
@@ -13,8 +13,8 @@ export class RegisterDto {
   email: string;
 
   @ApiProperty({
-    description: 'User password',
-    example: 'Admin@123',
+    description: 'Password for the new account',
+    example: 'StrongP@ss123',
     minLength: 8,
     required: true,
     pattern: '/((?=.*\\d)|(?=.*\\W+))(?![.\\n])(?=.*[A-Z])(?=.*[a-z]).*$/',
@@ -29,10 +29,19 @@ export class RegisterDto {
 
   @ApiProperty({
     description: 'Full name of the user',
-    example: 'Admin User',
+    example: 'John Doe',
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'Full name must be a string' })
+  fullName?: string;
+
+  @ApiProperty({
+    description: 'Tenant ID for multi-tenant setup',
+    example: 'e37c743c-7a2e-4e6c-b169-9e52354d3e01',
     required: true,
   })
-  @IsNotEmpty({ message: 'Full name is required' })
-  @IsString({ message: 'Full name must be a string' })
-  fullName: string;
+  @IsNotEmpty({ message: 'Tenant ID is required' })
+  @IsString({ message: 'Tenant ID must be a string' })
+  tenantId: string;
 }
