@@ -5,8 +5,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { AuthToken } from './auth-token.entity';
+import { Tenant } from './tenant.entity';
 
 @Entity('users')
 export class User {
@@ -39,4 +42,8 @@ export class User {
 
   @OneToMany(() => AuthToken, (token) => token.user)
   authTokens: AuthToken[];
+
+  @ManyToOne(() => Tenant, tenant => tenant.users)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 }
