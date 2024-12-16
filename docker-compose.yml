@@ -1,25 +1,45 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: nestjs_auth_db
+  api:
+    container_name: nestjs_auth_api
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - '3000:3000'
     environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-nestjs_auth}
-      PGDATA: /var/lib/postgresql/data/pgdata
+      - NODE_ENV=development
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=nestjs_auth
+      - JWT_SECRET=your_jwt_secret_key
+      - JWT_REFRESH_SECRET=your_jwt_refresh_secret_key
+      - PASSWORD_RESET_SECRET=your_password_reset_secret_key
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - postgres
+    networks:
+      - nestjs_network
+    command: npm run start:dev
+
+  postgres:
+    container_name: nestjs_auth_db
+    image: postgres:15-alpine
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=nestjs_auth
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d/init-scripts
-      - ./docker/postgres/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
-    ports:
-      - "${DB_PORT:-5432}:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - nestjs_network
 
