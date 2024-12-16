@@ -22,7 +22,17 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, JwtStrategy],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    {
+      provide: 'TENANT_CONNECTION',
+      useFactory: (configService: ConfigService) => ({
+        // tenant connection config if needed
+      }),
+      inject: [ConfigService],
+    },
+  ],
   controllers: [AuthController],
   exports: [AuthService],
 })
