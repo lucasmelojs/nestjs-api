@@ -14,21 +14,21 @@ export class AuthToken {
   id: string;
 
   @Column({ name: 'user_id' })
-  user_id: string;
+  userId: string;
 
   @Column({ name: 'token_hash' })
-  token_hash: string;
+  tokenHash: string;
 
   @Column({ name: 'expires_at', type: 'timestamp with time zone' })
-  expires_at: Date;
+  expiresAt: Date;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
-  created_at: Date;
+  createdAt: Date;
 
   @Column({ name: 'revoked_at', type: 'timestamp with time zone', nullable: true })
-  revoked_at: Date;
+  revokedAt: Date;
 
-  @ManyToOne(() => User, (user) => user.auth_tokens)
+  @ManyToOne(() => User, (user) => user.authTokens)
   @JoinColumn({ name: 'user_id' })
   user: User;
 }
