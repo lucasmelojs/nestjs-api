@@ -16,6 +16,8 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_NAME=nestjs_auth
+      - DB_TEST_USER=postgres_test
+      - DB_TEST_PASSWORD=postgres_test
       - DB_TEST_NAME=nestjs_auth_test
       - JWT_SECRET=your_jwt_secret_key
       - JWT_REFRESH_SECRET=your_jwt_refresh_secret_key
