@@ -6,11 +6,13 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { User } from './entities/user.entity';
 import { AuthToken } from './entities/auth-token.entity';
+import { Tenant } from './entities/tenant.entity';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { UserRepository } from './repositories/user.repository';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, AuthToken]),
+    TypeOrmModule.forFeature([User, AuthToken, Tenant]),  // Added Tenant entity here
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -25,13 +27,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
   providers: [
     AuthService,
     JwtStrategy,
-    {
-      provide: 'TENANT_CONNECTION',
-      useFactory: (configService: ConfigService) => ({
-        // tenant connection config if needed
-      }),
-      inject: [ConfigService],
-    },
+    UserRepository,
   ],
   controllers: [AuthController],
   exports: [AuthService],
