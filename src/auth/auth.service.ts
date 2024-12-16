@@ -1,142 +1,235 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
-import { UserRepository } from './repositories/user.repository';
-import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, DataSource } from 'typeorm';
+import { User } from './entities/user.entity';
+import { AuthToken } from './entities/auth-token.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly userRepository: UserRepository,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(AuthToken)
+    private readonly tokenRepository: Repository<AuthToken>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly dataSource: DataSource,
   ) {}
 
-  async validateUser(email: string, password: string, tenantId: string): Promise<any> {
-    const user = await this.userRepository.findByEmail(email, tenantId);
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
+  async login(email: string, password: string) {
+    const queryRunner = this.dataSource.createQueryRunner();
+    try {
+      await queryRunner.connect();
+      const user = await this.userRepository.findOne({ where: { email } });
 
-    const isPasswordValid = await this.userRepository.verifyPassword(user.id, password);
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      if (!user) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      const [result] = await queryRunner.query(
+        `SELECT crypt($1, $2) = $2 as valid`,
+        [password, user.password_hash],
+      );
+
+      if (!result.valid) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      const [accessToken, refreshToken] = await Promise.all([
+        this.jwtService.signAsync(
+          { sub: user.id, email: user.email },
+          { expiresIn: '15m' },
+        ),
+        this.jwtService.signAsync(
+          { sub: user.id },
+          { expiresIn: '7d', secret: this.configService.get('JWT_REFRESH_SECRET') },
+        ),
+      ]);
+
+      await this.tokenRepository.save({
+        user,
+        token_hash: refreshToken,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      });
+
+      return { accessToken, refreshToken };
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async refreshToken(refreshToken: string) {
+    try {
+      const payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: this.configService.get('JWT_REFRESH_SECRET'),
+      });
+
+      const tokenRecord = await this.tokenRepository.findOne({
+        where: { token_hash: refreshToken, revoked_at: null },
+        relations: ['user'],
+      });
+
+      if (!tokenRecord) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      const user = tokenRecord.user;
+      const [accessToken, newRefreshToken] = await Promise.all([
+        this.jwtService.signAsync(
+          { sub: user.id, email: user.email },
+          { expiresIn: '15m' },
+        ),
+        this.jwtService.signAsync(
+          { sub: user.id },
+          { expiresIn: '7d', secret: this.configService.get('JWT_REFRESH_SECRET') },
+        ),
+      ]);
+
+      // Revoke old refresh token and save new one
+      await this.tokenRepository.update(tokenRecord.id, { revoked_at: new Date() });
+      await this.tokenRepository.save({
+        user,
+        token_hash: newRefreshToken,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      });
+
+      return { accessToken, refreshToken: newRefreshToken };
+    } catch (error) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
+
+  async logout(userId: string) {
+    await this.tokenRepository.update(
+      { user_id: userId, revoked_at: null },
+      { revoked_at: new Date() },
+    );
+    return { message: 'Logged out successfully' };
+  }
+
+  async getProfile(userId: string) {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'email', 'full_name', 'status', 'last_login', 'created_at'],
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
 
     return user;
   }
 
-  private createJwtPayload(user: any): JwtPayload {
-    return {
-      sub: user.id,
-      email: user.email,
-      tenantId: user.tenantId,
-      firstName: user.firstName,
-      lastName: user.lastName
-    };
-  }
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.userRepository.findOneBy({ id: userId });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
 
-  async login(loginDto: LoginDto) {
+    // Verify current password using pgcrypto
+    const queryRunner = this.dataSource.createQueryRunner();
     try {
-      const { email, password, tenantId } = loginDto;
-      const user = await this.validateUser(email, password, tenantId);
+      await queryRunner.connect();
+      const [result] = await queryRunner.query(
+        `SELECT crypt($1, $2) = $2 as valid`,
+        [currentPassword, user.password_hash],
+      );
 
-      // Update last login timestamp
-      await this.userRepository.updateLastLogin(user.id);
+      if (!result.valid) {
+        throw new UnauthorizedException('Current password is incorrect');
+      }
 
-      // Create JWT payload
-      const payload = this.createJwtPayload(user);
-      console.log('Creating login token with payload:', payload);
+      // Hash new password using pgcrypto
+      const [hashResult] = await queryRunner.query(
+        `SELECT crypt($1, gen_salt('bf', 10)) as hash`,
+        [newPassword],
+      );
 
-      // Generate tokens
-      const [accessToken, refreshToken] = await Promise.all([
-        this.generateAccessToken(payload),
-        this.generateRefreshToken(payload)
-      ]);
-
-      return {
-        accessToken,
-        refreshToken,
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          tenantId: user.tenantId
-        }
-      };
-    } catch (error) {
-      console.error('Login error:', error);
-      if (error instanceof UnauthorizedException) {
+      // Update password and revoke all tokens
+      await queryRunner.startTransaction();
+      try {
+        await queryRunner.query(
+          `UPDATE users SET password_hash = $1 WHERE id = $2`,
+          [hashResult.hash, userId],
+        );
+        await queryRunner.query(
+          `UPDATE auth_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL`,
+          [userId],
+        );
+        await queryRunner.commitTransaction();
+      } catch (error) {
+        await queryRunner.rollbackTransaction();
         throw error;
       }
-      throw new UnauthorizedException('Invalid credentials');
+    } finally {
+      await queryRunner.release();
     }
+
+    return { message: 'Password changed successfully' };
   }
 
-  async register(registerDto: RegisterDto) {
-    const existingUser = await this.userRepository.findByEmail(
-      registerDto.email,
-      registerDto.tenantId
+  async forgotPassword(email: string) {
+    const user = await this.userRepository.findOneBy({ email });
+    if (!user) {
+      // Return success even if user doesn't exist for security
+      return { message: 'If your email is registered, you will receive a password reset link' };
+    }
+
+    // Generate reset token
+    const resetToken = await this.jwtService.signAsync(
+      { sub: user.id, type: 'password_reset' },
+      { expiresIn: '1h', secret: this.configService.get('PASSWORD_RESET_SECRET') },
     );
 
-    if (existingUser) {
-      throw new ConflictException('User already exists');
-    }
-
-    const user = await this.userRepository.create(registerDto);
-    const payload = this.createJwtPayload(user);
-    console.log('Creating registration token with payload:', payload);
-
-    const [accessToken, refreshToken] = await Promise.all([
-      this.generateAccessToken(payload),
-      this.generateRefreshToken(payload)
-    ]);
-
-    return {
-      accessToken,
-      refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        tenantId: user.tenantId
-      }
-    };
+    // TODO: Implement email sending logic here
+    // For now, just return the token for testing
+    return { message: 'Reset token generated', token: resetToken };
   }
 
-  private async generateAccessToken(payload: JwtPayload): Promise<string> {
-    return this.jwtService.signAsync(payload, {
-      expiresIn: this.configService.get('JWT_EXPIRATION', '15m')
-    });
-  }
-
-  private async generateRefreshToken(payload: JwtPayload): Promise<string> {
-    return this.jwtService.signAsync(payload, {
-      expiresIn: this.configService.get('JWT_REFRESH_EXPIRATION', '7d')
-    });
-  }
-
-  async refreshToken(token: string) {
+  async resetPassword(token: string, newPassword: string) {
     try {
-      const payload = await this.jwtService.verifyAsync(token);
-      delete payload.exp;
-      delete payload.iat;
+      const payload = await this.jwtService.verifyAsync(token, {
+        secret: this.configService.get('PASSWORD_RESET_SECRET'),
+      });
 
-      const [accessToken, refreshToken] = await Promise.all([
-        this.generateAccessToken(payload),
-        this.generateRefreshToken(payload)
-      ]);
+      if (payload.type !== 'password_reset') {
+        throw new UnauthorizedException('Invalid reset token');
+      }
 
-      return {
-        accessToken,
-        refreshToken
-      };
+      const queryRunner = this.dataSource.createQueryRunner();
+      try {
+        await queryRunner.connect();
+        // Hash new password using pgcrypto
+        const [hashResult] = await queryRunner.query(
+          `SELECT crypt($1, gen_salt('bf', 10)) as hash`,
+          [newPassword],
+        );
+
+        // Update password and revoke all tokens
+        await queryRunner.startTransaction();
+        try {
+          await queryRunner.query(
+            `UPDATE users SET password_hash = $1 WHERE id = $2`,
+            [hashResult.hash, payload.sub],
+          );
+          await queryRunner.query(
+            `UPDATE auth_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL`,
+            [payload.sub],
+          );
+          await queryRunner.commitTransaction();
+        } catch (error) {
+          await queryRunner.rollbackTransaction();
+          throw error;
+        }
+      } finally {
+        await queryRunner.release();
+      }
+
+      return { message: 'Password has been reset successfully' };
     } catch (error) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException('Invalid or expired reset token');
     }
   }
 }
