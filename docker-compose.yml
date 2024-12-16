@@ -16,6 +16,7 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_NAME=nestjs_auth
+      - DB_TEST_NAME=nestjs_auth_test
       - JWT_SECRET=your_jwt_secret_key
       - JWT_REFRESH_SECRET=your_jwt_refresh_secret_key
       - PASSWORD_RESET_SECRET=your_password_reset_secret_key
@@ -39,9 +40,16 @@ services:
       - POSTGRES_DB=nestjs_auth
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./src/schemas/01-init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./src/schemas/02-test-data.sql:/docker-entrypoint-initdb.d/02-test-data.sql
+      - ./src/schemas/test/setup-test-db.sql:/docker-entrypoint-initdb.d/03-setup-test-db.sql
     networks:
       - nestjs_network
+    command: [
+      "postgres",
+      "-c", "log_statement=all",
+      "-c", "log_destination=stderr"
+    ]
 
 networks:
   nestjs_network:
