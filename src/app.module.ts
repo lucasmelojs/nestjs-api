@@ -25,10 +25,23 @@ import { AuthToken } from './auth/entities/auth-token.entity';
       }),
       inject: [ConfigService],
     }),
-    ThrottlerModule.forRoot({
-      ttl: 60,
-      limit: 10,
-    }),
+    ThrottlerModule.forRoot([
+      {
+        name: 'short',
+        limit: 3,
+        ttlInSeconds: 60,
+      },
+      {
+        name: 'medium',
+        limit: 20,
+        ttlInSeconds: 60 * 60,
+      },
+      {
+        name: 'long',
+        limit: 100,
+        ttlInSeconds: 60 * 60 * 24,
+      },
+    ]),
     AuthModule,
   ],
 })
