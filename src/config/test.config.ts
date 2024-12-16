@@ -1,11 +1,11 @@
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModuleAsyncOptions } from '@nestjs/typeorm';
+import { TypeOrmModuleAsyncOptions, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { User } from '../auth/entities/user.entity';
 import { AuthToken } from '../auth/entities/auth-token.entity';
 import { Tenant } from '../auth/entities/tenant.entity';
 
-export const testConfig = {
-  type: 'postgres' as const,
+export const testConfig: TypeOrmModuleOptions = {
+  type: 'postgres',
   host: 'localhost',
   port: 5432,
   username: 'postgres_test',
@@ -18,13 +18,16 @@ export const testConfig = {
 
 export const testTypeOrmConfig: TypeOrmModuleAsyncOptions = {
   imports: [ConfigModule],
-  useFactory: async (configService: ConfigService) => ({
-    ...testConfig,
-    host: configService.get('DB_HOST', 'localhost'),
-    port: configService.get('DB_PORT', 5432),
-    username: configService.get('DB_TEST_USER', 'postgres_test'),
-    password: configService.get('DB_TEST_PASSWORD', 'postgres_test'),
-    database: configService.get('DB_TEST_NAME', 'nestjs_auth_test'),
+  useFactory: (configService: ConfigService): TypeOrmModuleOptions => ({
+    type: 'postgres',
+    host: configService.get<string>('DB_HOST', 'localhost'),
+    port: configService.get<number>('DB_PORT', 5432),
+    username: configService.get<string>('DB_TEST_USER', 'postgres_test'),
+    password: configService.get<string>('DB_TEST_PASSWORD', 'postgres_test'),
+    database: configService.get<string>('DB_TEST_NAME', 'nestjs_auth_test'),
+    autoLoadEntities: true,
+    synchronize: true,
+    entities: [User, AuthToken, Tenant],
   }),
   inject: [ConfigService],
 };
