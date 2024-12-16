@@ -1,67 +1,105 @@
 import { Injectable } from '@nestjs/common';
-import { DatabaseService } from '../../database/database.service';
-import { User } from '../interfaces/user.interface';
+import { DataSource, Repository } from 'typeorm';
+import { User } from '../entities/user.entity';
 import { RegisterDto } from '../dto/register.dto';
 
 @Injectable()
-export class UserRepository {
-  constructor(private readonly db: DatabaseService) {}
-
-  private mapToUser(row: any): User {
-    return {
-      id: row.id,
-      email: row.email,
-      tenantId: row.tenant_id,
-      firstName: row.first_name,
-      lastName: row.last_name,
-      status: row.status,
-      emailVerified: row.email_verified,
-      lastLoginAt: row.last_login_at,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
-    };
+export class UserRepository extends Repository<User> {
+  constructor(private dataSource: DataSource) {
+    super(User, dataSource.createEntityManager());
   }
 
-  async findByEmail(email: string, tenantId: string): Promise<User | null> {
-    const { rows } = await this.db.query(
-      'SELECT * FROM users WHERE email = $1 AND tenant_id = $2',
-      [email, tenantId]
-    );
-    return rows[0] ? this.mapToUser(rows[0]) : null;
+  async findByEmail(email: string): Promise<User | undefined> {
+    return this.createQueryBuilder('user')
+      .where('user.email = :email', { email })
+      .getOne();
   }
 
-  async create(data: RegisterDto): Promise<User> {
-    const { rows } = await this.db.query(
-      `INSERT INTO users (
-        email,
-        password_hash,
-        first_name,
-        last_name,
-        tenant_id
-      ) VALUES (
-        $1,
-        crypt($2, gen_salt('bf', 10)),
-        $3,
-        $4,
-        $5
-      ) RETURNING *`,
-      [data.email, data.password, data.firstName, data.lastName, data.tenantId]
-    );
-    return this.mapToUser(rows[0]);
+  async findByEmailAndTenant(email: string, tenantId: string): Promise<User | undefined> {
+    return this.createQueryBuilder('user')
+      .where('user.email = :email', { email })
+      .andWhere('user.tenant_id = :tenantId', { tenantId })
+      .getOne();
+  }
+
+  async createUser(data: RegisterDto): Promise<User> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      // Hash password using pgcrypto
+      const [hashResult] = await queryRunner.query(
+        `SELECT crypt($1, gen_salt('bf', 10)) as hash`,
+        [data.password]
+      );
+
+      // Create user with hashed password
+      const [user] = await queryRunner.query(
+        `INSERT INTO users (email, password_hash, full_name, tenant_id)
+         VALUES ($1, $2, $3, $4)
+         RETURNING *`,
+        [data.email, hashResult.hash, data.fullName, data.tenantId]
+      );
+
+      await queryRunner.commitTransaction();
+      return user;
+
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async verifyPassword(userId: string, password: string): Promise<boolean> {
-    const { rows } = await this.db.query(
-      'SELECT verify_password($1, (SELECT password_hash FROM users WHERE id = $2)) as valid',
-      [password, userId]
-    );
-    return rows[0]?.valid || false;
+    const queryRunner = this.dataSource.createQueryRunner();
+    try {
+      await queryRunner.connect();
+      const [result] = await queryRunner.query(
+        `SELECT (password_hash = crypt($1, password_hash)) as valid
+         FROM users
+         WHERE id = $2`,
+        [password, userId]
+      );
+      return result?.valid || false;
+
+    } finally {
+      await queryRunner.release();
+    }
   }
 
-  async updateLastLogin(userId: string): Promise<void> {
-    await this.db.query(
-      'UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1',
-      [userId]
-    );
+  async updatePassword(userId: string, newPassword: string): Promise<void> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      // Hash new password
+      const [hashResult] = await queryRunner.query(
+        `SELECT crypt($1, gen_salt('bf', 10)) as hash`,
+        [newPassword]
+      );
+
+      // Update password
+      await queryRunner.query(
+        `UPDATE users
+         SET password_hash = $1
+         WHERE id = $2`,
+        [hashResult.hash, userId]
+      );
+
+      await queryRunner.commitTransaction();
+
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+
+    } finally {
+      await queryRunner.release();
+    }
   }
 }
