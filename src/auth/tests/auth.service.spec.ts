@@ -16,11 +16,16 @@ describe('AuthService', () => {
   let configService: ConfigService;
   let dataSource: DataSource;
 
-  const mockUser = {
+  const mockUser: Partial<User> = {
     id: '123',
     email: 'test@example.com',
-    password_hash: 'hashed_password',
-    tenant_id: '456',
+    passwordHash: 'hashed_password',
+    tenantId: '456',
+    fullName: 'Test User',
+    status: 'active',
+    lastLogin: new Date(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
   };
 
   const mockQueryRunner = {
@@ -43,6 +48,7 @@ describe('AuthService', () => {
           provide: getRepositoryToken(User),
           useValue: {
             findOne: jest.fn(),
+            findOneBy: jest.fn(),
             create: jest.fn(),
             save: jest.fn(),
           },
@@ -51,6 +57,7 @@ describe('AuthService', () => {
           provide: getRepositoryToken(AuthToken),
           useValue: {
             save: jest.fn(),
+            update: jest.fn(),
           },
         },
         {
@@ -111,54 +118,71 @@ describe('AuthService', () => {
     });
   });
 
-  describe('login', () => {
-    it('should throw UnauthorizedException for invalid credentials', async () => {
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as User);
-      mockQueryRunner.query.mockResolvedValue([{ valid: false }]);
+  describe('refreshToken', () => {
+    it('should throw UnauthorizedException for invalid token', async () => {
+      jest.spyOn(jwtService, 'verifyAsync').mockRejectedValue(new Error());
 
-      await expect(service.login('test@example.com', 'wrong-password')).rejects.toThrow(
+      await expect(service.refreshToken('invalid-token')).rejects.toThrow(
         UnauthorizedException,
       );
     });
 
-    it('should return tokens for valid credentials', async () => {
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as User);
-      mockQueryRunner.query.mockResolvedValue([{ valid: true }]);
-      
-      const mockTokens = {
-        accessToken: 'access_token',
-        refreshToken: 'refresh_token',
+    it('should return new tokens for valid refresh token', async () => {
+      const mockTokenRecord = {
+        id: '1',
+        user: mockUser as User,
+        tokenHash: 'old-token',
+        revokedAt: null,
       };
 
+      jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: mockUser.id });
+      jest.spyOn(tokenRepository, 'findOne').mockResolvedValue(mockTokenRecord as AuthToken);
       jest.spyOn(jwtService, 'signAsync')
-        .mockResolvedValueOnce(mockTokens.accessToken)
-        .mockResolvedValueOnce(mockTokens.refreshToken);
+        .mockResolvedValueOnce('new-access-token')
+        .mockResolvedValueOnce('new-refresh-token');
 
-      const result = await service.login('test@example.com', 'correct-password');
-      
-      expect(result).toEqual(mockTokens);
+      const result = await service.refreshToken('valid-token');
+
+      expect(result).toEqual({
+        accessToken: 'new-access-token',
+        refreshToken: 'new-refresh-token',
+      });
+      expect(tokenRepository.update).toHaveBeenCalled();
       expect(tokenRepository.save).toHaveBeenCalled();
     });
   });
 
-  describe('register', () => {
-    it('should throw ConflictException for existing user', async () => {
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as User);
+  describe('changePassword', () => {
+    it('should throw NotFoundException for non-existent user', async () => {
+      jest.spyOn(userRepository, 'findOneBy').mockResolvedValue(null);
 
-      await expect(service.register('test@example.com', 'password', '456')).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.changePassword('non-existent-id', 'old-pass', 'new-pass'),
+      ).rejects.toThrow(NotFoundException);
     });
 
-    it('should create new user successfully', async () => {
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
-      mockQueryRunner.query.mockResolvedValue([{ hash: 'hashed_password' }]);
-      jest.spyOn(userRepository, 'create').mockReturnValue(mockUser as User);
-      mockQueryRunner.manager.save.mockResolvedValue(mockUser);
+    it('should throw UnauthorizedException for incorrect current password', async () => {
+      jest.spyOn(userRepository, 'findOneBy').mockResolvedValue(mockUser as User);
+      mockQueryRunner.query.mockResolvedValueOnce([{ valid: false }]);
 
-      const result = await service.register('test@example.com', 'password', '456');
-      
-      expect(result).toEqual(mockUser);
+      await expect(
+        service.changePassword(mockUser.id, 'wrong-pass', 'new-pass'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should change password successfully', async () => {
+      jest.spyOn(userRepository, 'findOneBy').mockResolvedValue(mockUser as User);
+      mockQueryRunner.query
+        .mockResolvedValueOnce([{ valid: true }])
+        .mockResolvedValueOnce([{ hash: 'new-hash' }]);
+
+      const result = await service.changePassword(
+        mockUser.id,
+        'current-pass',
+        'new-pass',
+      );
+
+      expect(result).toEqual({ message: 'Password changed successfully' });
       expect(mockQueryRunner.startTransaction).toHaveBeenCalled();
       expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
     });
