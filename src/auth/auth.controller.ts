@@ -18,6 +18,7 @@ import {
   ApiBadRequestResponse,
   ApiNotFoundResponse,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -32,6 +33,7 @@ export class AuthController {
 
   @Post('refresh-token')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ short: { ttlInSeconds: 60, limit: 3 } })
   @ApiOperation({
     summary: 'Refresh access token',
     description: 'Use a valid refresh token to generate new access and refresh tokens',
@@ -57,6 +59,7 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @HttpCode(HttpStatus.NO_CONTENT)
+  @Throttle({ short: { ttlInSeconds: 60, limit: 3 } })
   @ApiOperation({
     summary: 'Logout user',
     description: 'Invalidate current session and revoke refresh token',
@@ -70,6 +73,7 @@ export class AuthController {
   @Get('me')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
+  @Throttle({ medium: { ttlInSeconds: 3600, limit: 100 } })
   @ApiOperation({
     summary: 'Get current user profile',
     description: 'Retrieve the profile information of the currently authenticated user',
@@ -82,10 +86,10 @@ export class AuthController {
       properties: {
         id: { type: 'string', format: 'uuid' },
         email: { type: 'string', format: 'email' },
-        full_name: { type: 'string', nullable: true },
+        fullName: { type: 'string', nullable: true },
         status: { type: 'string', enum: ['active', 'inactive'] },
-        last_login: { type: 'string', format: 'date-time', nullable: true },
-        created_at: { type: 'string', format: 'date-time' },
+        lastLogin: { type: 'string', format: 'date-time', nullable: true },
+        createdAt: { type: 'string', format: 'date-time' },
       },
     },
   })
@@ -99,6 +103,7 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
+  @Throttle({ short: { ttlInSeconds: 60, limit: 3 } })
   @ApiOperation({
     summary: 'Change user password',
     description: 'Change the password of the currently authenticated user',
@@ -129,6 +134,7 @@ export class AuthController {
 
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ short: { ttlInSeconds: 300, limit: 3 } })
   @ApiOperation({
     summary: 'Request password reset',
     description: 'Request a password reset link to be sent to the user\'s email',
@@ -153,6 +159,7 @@ export class AuthController {
 
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ short: { ttlInSeconds: 300, limit: 3 } })
   @ApiOperation({
     summary: 'Reset password',
     description: 'Reset user password using the token received via email',
