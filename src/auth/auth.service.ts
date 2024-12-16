@@ -20,7 +20,7 @@ export class AuthService {
 
   async validateUser(email: string, password: string, tenantId: string) {
     const user = await this.userRepository.findOne({
-      where: { email, tenant_id: tenantId },
+      where: { email, tenantId },
     });
 
     if (!user) {
@@ -32,7 +32,7 @@ export class AuthService {
       await queryRunner.connect();
       const [result] = await queryRunner.query(
         `SELECT crypt($1, $2) = $2 as valid`,
-        [password, user.password_hash],
+        [password, user.passwordHash],
       );
 
       if (!result.valid) {
@@ -48,7 +48,7 @@ export class AuthService {
   async register(email: string, password: string, tenantId: string, fullName?: string) {
     // Check if user already exists
     const existingUser = await this.userRepository.findOne({
-      where: { email, tenant_id: tenantId },
+      where: { email, tenantId },
     });
 
     if (existingUser) {
@@ -69,9 +69,9 @@ export class AuthService {
       // Create new user
       const user = this.userRepository.create({
         email,
-        password_hash: hashResult.hash,
-        tenant_id: tenantId,
-        full_name: fullName,
+        passwordHash: hashResult.hash,
+        tenantId,
+        fullName,
       });
 
       await queryRunner.manager.save(user);
@@ -98,7 +98,7 @@ export class AuthService {
 
       const [result] = await queryRunner.query(
         `SELECT crypt($1, $2) = $2 as valid`,
-        [password, user.password_hash],
+        [password, user.passwordHash],
       );
 
       if (!result.valid) {
@@ -118,8 +118,8 @@ export class AuthService {
 
       await this.tokenRepository.save({
         user,
-        token_hash: refreshToken,
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        tokenHash: refreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
 
       return { accessToken, refreshToken };

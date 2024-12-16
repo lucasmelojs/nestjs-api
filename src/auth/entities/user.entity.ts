@@ -4,8 +4,6 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
   OneToMany,
 } from 'typeorm';
 import { AuthToken } from './auth-token.entity';
@@ -22,23 +20,23 @@ export class User {
   email: string;
 
   @Column({ name: 'password_hash' })
-  password_hash: string;
+  passwordHash: string;
 
   @Column({ name: 'full_name', nullable: true })
-  full_name: string;
+  fullName: string;
 
   @Column({ default: 'active' })
   status: string;
 
   @Column({ name: 'last_login', type: 'timestamp with time zone', nullable: true })
-  last_login: Date;
+  lastLogin: Date;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp with time zone' })
-  created_at: Date;
+  createdAt: Date;
 
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamp with time zone' })
-  updated_at: Date;
+  updatedAt: Date;
 
   @OneToMany(() => AuthToken, (token) => token.user)
-  auth_tokens: AuthToken[];
+  authTokens: AuthToken[];
 }
