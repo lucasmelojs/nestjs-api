@@ -17,6 +17,7 @@ import {
   ApiUnauthorizedResponse,
   ApiBadRequestResponse,
   ApiNotFoundResponse,
+  ApiExtraModels,
 } from '@nestjs/swagger';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
@@ -25,8 +26,12 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { UserProfileResponse } from './responses/user-profile.response';
+import { TokenResponse } from './responses/token.response';
 
 @ApiTags('Authentication')
+@ApiBearerAuth()
+@ApiExtraModels(UserProfileResponse, TokenResponse)
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -41,28 +46,35 @@ export class AuthController {
   })
   @ApiOperation({
     summary: 'Refresh access token',
-    description: 'Use a valid refresh token to generate new access and refresh tokens',
+    description: 'Exchange a valid refresh token for new access and refresh tokens',
   })
-  @ApiBody({ type: RefreshTokenDto })
+  @ApiBody({
+    type: RefreshTokenDto,
+    description: 'The refresh token obtained from login or previous refresh',
+    required: true,
+  })
   @ApiResponse({
     status: 200,
-    description: 'Token refreshed successfully',
+    description: 'New access and refresh tokens generated successfully',
+    type: TokenResponse
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid or expired refresh token',
     schema: {
       type: 'object',
       properties: {
-        accessToken: { type: 'string', example: 'eyJhbGci...' },
-        refreshToken: { type: 'string', example: 'eyJhbGci...' },
-      },
-    },
+        statusCode: { type: 'number', example: 401 },
+        message: { type: 'string', example: 'Invalid refresh token' },
+        error: { type: 'string', example: 'Unauthorized' }
+      }
+    }
   })
-  @ApiUnauthorizedResponse({ description: 'Invalid or expired refresh token' })
   async refreshToken(@Body() refreshTokenDto: RefreshTokenDto) {
     return this.authService.refreshToken(refreshTokenDto.refreshToken);
   }
 
   @Post('logout')
   @UseGuards(AuthGuard('jwt'))
-  @ApiBearerAuth()
   @HttpCode(HttpStatus.NO_CONTENT)
   @Throttle({
     default: {
@@ -72,17 +84,29 @@ export class AuthController {
   })
   @ApiOperation({
     summary: 'Logout user',
-    description: 'Invalidate current session and revoke refresh token',
+    description: 'Invalidate current session and revoke all refresh tokens for security',
   })
-  @ApiResponse({ status: 204, description: 'Logged out successfully' })
-  @ApiUnauthorizedResponse({ description: 'Invalid or expired access token' })
+  @ApiResponse({
+    status: 204,
+    description: 'Successfully logged out and all sessions invalidated'
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid or expired access token',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 401 },
+        message: { type: 'string', example: 'Unauthorized' },
+        error: { type: 'string', example: 'Invalid token' }
+      }
+    }
+  })
   async logout(@CurrentUser() userId: string) {
     await this.authService.logout(userId);
   }
 
   @Get('me')
   @UseGuards(AuthGuard('jwt'))
-  @ApiBearerAuth()
   @Throttle({
     default: {
       limit: 20,
@@ -91,32 +115,41 @@ export class AuthController {
   })
   @ApiOperation({
     summary: 'Get current user profile',
-    description: 'Retrieve the profile information of the currently authenticated user',
+    description: 'Retrieve detailed profile information for the currently authenticated user',
   })
   @ApiResponse({
     status: 200,
     description: 'User profile retrieved successfully',
+    type: UserProfileResponse
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid or expired access token',
     schema: {
       type: 'object',
       properties: {
-        id: { type: 'string', format: 'uuid' },
-        email: { type: 'string', format: 'email' },
-        fullName: { type: 'string', nullable: true },
-        status: { type: 'string', enum: ['active', 'inactive'] },
-        lastLogin: { type: 'string', format: 'date-time', nullable: true },
-        createdAt: { type: 'string', format: 'date-time' },
-      },
-    },
+        statusCode: { type: 'number', example: 401 },
+        message: { type: 'string', example: 'Unauthorized' },
+        error: { type: 'string', example: 'Invalid token' }
+      }
+    }
   })
-  @ApiUnauthorizedResponse({ description: 'Invalid or expired access token' })
-  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiNotFoundResponse({
+    description: 'User not found',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 404 },
+        message: { type: 'string', example: 'User not found' },
+        error: { type: 'string', example: 'Not Found' }
+      }
+    }
+  })
   getProfile(@CurrentUser() userId: string) {
     return this.authService.getProfile(userId);
   }
 
   @Post('change-password')
   @UseGuards(AuthGuard('jwt'))
-  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @Throttle({
     default: {
@@ -126,21 +159,45 @@ export class AuthController {
   })
   @ApiOperation({
     summary: 'Change user password',
-    description: 'Change the password of the currently authenticated user',
+    description: 'Allow authenticated users to change their password by providing current and new passwords',
   })
-  @ApiBody({ type: ChangePasswordDto })
+  @ApiBody({
+    type: ChangePasswordDto,
+    description: 'Current password and new password information',
+    required: true
+  })
   @ApiResponse({
     status: 200,
     description: 'Password changed successfully',
     schema: {
       type: 'object',
       properties: {
-        message: { type: 'string', example: 'Password changed successfully' },
-      },
-    },
+        message: { type: 'string', example: 'Password changed successfully' }
+      }
+    }
   })
-  @ApiUnauthorizedResponse({ description: 'Current password is incorrect' })
-  @ApiBadRequestResponse({ description: 'Invalid password format' })
+  @ApiUnauthorizedResponse({
+    description: 'Current password is incorrect',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 401 },
+        message: { type: 'string', example: 'Current password is incorrect' },
+        error: { type: 'string', example: 'Unauthorized' }
+      }
+    }
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid password format or requirements not met',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 400 },
+        message: { type: 'array', items: { type: 'string' }, example: ['Password must be at least 8 characters', 'Password must contain at least one uppercase letter'] },
+        error: { type: 'string', example: 'Bad Request' }
+      }
+    }
+  })
   async changePassword(
     @CurrentUser() userId: string,
     @Body() changePasswordDto: ChangePasswordDto,
@@ -162,21 +219,30 @@ export class AuthController {
   })
   @ApiOperation({
     summary: 'Request password reset',
-    description: 'Request a password reset link to be sent to the user\'s email',
+    description: 'Initiate the password reset process by requesting a reset link via email',
   })
-  @ApiBody({ type: ForgotPasswordDto })
+  @ApiBody({
+    type: ForgotPasswordDto,
+    description: 'Email address for password reset',
+    required: true
+  })
   @ApiResponse({
     status: 200,
-    description: 'Reset email sent if user exists',
+    description: 'Reset email sent (if user exists)',
     schema: {
       type: 'object',
       properties: {
         message: {
           type: 'string',
-          example: 'If your email is registered, you will receive a password reset link',
+          example: 'If your email is registered, you will receive a password reset link'
         },
-      },
-    },
+        token: {
+          type: 'string',
+          description: 'Reset token (only in development)',
+          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+        }
+      }
+    }
   })
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
     return this.authService.forgotPassword(forgotPasswordDto.email);
@@ -194,19 +260,43 @@ export class AuthController {
     summary: 'Reset password',
     description: 'Reset user password using the token received via email',
   })
-  @ApiBody({ type: ResetPasswordDto })
+  @ApiBody({
+    type: ResetPasswordDto,
+    description: 'Reset token and new password',
+    required: true
+  })
   @ApiResponse({
     status: 200,
     description: 'Password reset successfully',
     schema: {
       type: 'object',
       properties: {
-        message: { type: 'string', example: 'Password has been reset successfully' },
-      },
-    },
+        message: { type: 'string', example: 'Password has been reset successfully' }
+      }
+    }
   })
-  @ApiUnauthorizedResponse({ description: 'Invalid or expired reset token' })
-  @ApiBadRequestResponse({ description: 'Invalid password format' })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid or expired reset token',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 401 },
+        message: { type: 'string', example: 'Invalid or expired reset token' },
+        error: { type: 'string', example: 'Unauthorized' }
+      }
+    }
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid password format',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 400 },
+        message: { type: 'array', items: { type: 'string' }, example: ['Password must be at least 8 characters', 'Password must contain at least one uppercase letter'] },
+        error: { type: 'string', example: 'Bad Request' }
+      }
+    }
+  })
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return this.authService.resetPassword(
       resetPasswordDto.token,
