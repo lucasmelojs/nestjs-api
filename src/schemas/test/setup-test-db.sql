@@ -1,4 +1,4 @@
--- Create test role if not exists
+-- Create test role if not exists (with password)
 DO
 $do$
 BEGIN
@@ -8,23 +8,23 @@ BEGIN
 END
 $do$;
 
--- Give necessary permissions to postgres_test
-ALTER ROLE postgres_test WITH SUPERUSER CREATEDB CREATEROLE;
+-- Grant needed privileges to the test role
+ALTER ROLE postgres_test WITH CREATEDB;
 
 -- Drop test database if exists
 DROP DATABASE IF EXISTS nestjs_auth_test;
 
 -- Create test database
-CREATE DATABASE nestjs_auth_test;
-
--- Give all privileges on test database to postgres_test
-GRANT ALL PRIVILEGES ON DATABASE nestjs_auth_test TO postgres_test;
+CREATE DATABASE nestjs_auth_test WITH OWNER = postgres_test;
 
 -- Connect to test database
 \c nestjs_auth_test;
 
 -- Enable pgcrypto extension
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Grant all privileges on test database to test role
+GRANT ALL PRIVILEGES ON DATABASE nestjs_auth_test TO postgres_test;
 
 -- Create tables
 CREATE TABLE IF NOT EXISTS tenants (
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS auth_tokens (
     revoked_at TIMESTAMP WITH TIME ZONE
 );
 
--- Grant all privileges on all tables to postgres_test
+-- Grant privileges on all tables to test role
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO postgres_test;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO postgres_test;
 
