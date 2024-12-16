@@ -28,18 +28,18 @@ import { AuthToken } from './auth/entities/auth-token.entity';
     ThrottlerModule.forRoot([
       {
         name: 'short',
+        ttl: 60,
         limit: 3,
-        ttlInSeconds: 60,
       },
       {
         name: 'medium',
+        ttl: 60 * 60,
         limit: 20,
-        ttlInSeconds: 60 * 60,
       },
       {
         name: 'long',
+        ttl: 60 * 60 * 24,
         limit: 100,
-        ttlInSeconds: 60 * 60 * 24,
       },
     ]),
     AuthModule,
