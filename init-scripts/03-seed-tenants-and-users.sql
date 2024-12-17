@@ -1,127 +1,128 @@
 -- Seed script for tenants and users
--- File: init-scripts/03-seed-tenants-and-users.sql
 
--- Create default tenants
+-- Function to generate consistent UUIDs for testing
+CREATE OR REPLACE FUNCTION generate_test_uuid(seed text) RETURNS uuid AS $$
+BEGIN
+    RETURN md5(seed)::uuid;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Insert sample tenants
 INSERT INTO tenants (id, name, domain, status, created_at, updated_at)
 VALUES
-    ('11111111-1111-1111-1111-111111111111', 'Default Tenant', 'default.example.com', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('22222222-2222-2222-2222-222222222222', 'Development Tenant', 'dev.example.com', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('33333333-3333-3333-3333-333333333333', 'Testing Tenant', 'test.example.com', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+    (generate_test_uuid('tenant1'), 'Acme Corporation', 'acme.example.com', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (generate_test_uuid('tenant2'), 'TechStart Inc', 'techstart.example.com', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    (generate_test_uuid('tenant3'), 'Global Services Ltd', 'globalservices.example.com', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT DO NOTHING;
 
--- Create default users for each tenant
--- Note: Using pgcrypto to hash passwords. Default password is 'Password@123'
-INSERT INTO users (
-    id,
-    tenant_id,
-    email,
-    password_hash,
-    full_name,
-    status,
-    last_login,
-    created_at,
-    updated_at
-)
+-- Insert sample users with pgcrypto hashed passwords
+-- Default password for all test users is 'Password123!'
+INSERT INTO users (id, tenant_id, email, password_hash, full_name, status, last_login, created_at, updated_at)
 VALUES
-    -- Default Tenant Users
+    -- Acme Corporation Users
     (
-        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-        '11111111-1111-1111-1111-111111111111',
-        'admin@default.example.com',
-        crypt('Password@123', gen_salt('bf', 10)),
-        'Default Admin',
+        generate_test_uuid('user1'),
+        (SELECT id FROM tenants WHERE domain = 'acme.example.com'),
+        'admin@acme.example.com',
+        crypt('Password123!', gen_salt('bf', 10)),
+        'John Admin',
         'active',
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP
     ),
     (
-        'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-        '11111111-1111-1111-1111-111111111111',
-        'user@default.example.com',
-        crypt('Password@123', gen_salt('bf', 10)),
-        'Default User',
+        generate_test_uuid('user2'),
+        (SELECT id FROM tenants WHERE domain = 'acme.example.com'),
+        'user@acme.example.com',
+        crypt('Password123!', gen_salt('bf', 10)),
+        'Jane User',
         'active',
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP
     ),
-    
-    -- Development Tenant Users
-    (
-        'cccccccc-cccc-cccc-cccc-cccccccccccc',
-        '22222222-2222-2222-2222-222222222222',
-        'admin@dev.example.com',
-        crypt('Password@123', gen_salt('bf', 10)),
-        'Development Admin',
-        'active',
-        CURRENT_TIMESTAMP,
-        CURRENT_TIMESTAMP,
-        CURRENT_TIMESTAMP
-    ),
-    (
-        'dddddddd-dddd-dddd-dddd-dddddddddddd',
-        '22222222-2222-2222-2222-222222222222',
-        'developer@dev.example.com',
-        crypt('Password@123', gen_salt('bf', 10)),
-        'Development User',
-        'active',
-        CURRENT_TIMESTAMP,
-        CURRENT_TIMESTAMP,
-        CURRENT_TIMESTAMP
-    ),
-    
-    -- Testing Tenant Users
-    (
-        'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
-        '33333333-3333-3333-3333-333333333333',
-        'tester@test.example.com',
-        crypt('Password@123', gen_salt('bf', 10)),
-        'Test User',
-        'active',
-        CURRENT_TIMESTAMP,
-        CURRENT_TIMESTAMP,
-        CURRENT_TIMESTAMP
-    );
 
--- Insert some audit log entries for the seeded users
-INSERT INTO auth_audit_logs (
-    user_id,
-    tenant_id,
-    action,
-    ip_address,
-    user_agent,
-    created_at
-)
-VALUES
+    -- TechStart Inc Users
     (
-        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-        '11111111-1111-1111-1111-111111111111',
-        'SEED_CREATE',
-        '127.0.0.1',
-        'Seed Script',
+        generate_test_uuid('user3'),
+        (SELECT id FROM tenants WHERE domain = 'techstart.example.com'),
+        'admin@techstart.example.com',
+        crypt('Password123!', gen_salt('bf', 10)),
+        'Mike Admin',
+        'active',
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP
     ),
     (
-        'cccccccc-cccc-cccc-cccc-cccccccccccc',
-        '22222222-2222-2222-2222-222222222222',
-        'SEED_CREATE',
-        '127.0.0.1',
-        'Seed Script',
+        generate_test_uuid('user4'),
+        (SELECT id FROM tenants WHERE domain = 'techstart.example.com'),
+        'user@techstart.example.com',
+        crypt('Password123!', gen_salt('bf', 10)),
+        'Sarah User',
+        'active',
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP
     ),
-    (
-        'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
-        '33333333-3333-3333-3333-333333333333',
-        'SEED_CREATE',
-        '127.0.0.1',
-        'Seed Script',
-        CURRENT_TIMESTAMP
-    );
 
--- Verify data insertion
+    -- Global Services Ltd Users
+    (
+        generate_test_uuid('user5'),
+        (SELECT id FROM tenants WHERE domain = 'globalservices.example.com'),
+        'admin@globalservices.example.com',
+        crypt('Password123!', gen_salt('bf', 10)),
+        'David Admin',
+        'active',
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+    ),
+    (
+        generate_test_uuid('user6'),
+        (SELECT id FROM tenants WHERE domain = 'globalservices.example.com'),
+        'user@globalservices.example.com',
+        crypt('Password123!', gen_salt('bf', 10)),
+        'Emma User',
+        'active',
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+    )
+ON CONFLICT DO NOTHING;
+
+-- Insert sample audit logs for user creation
+INSERT INTO auth_audit_logs (id, user_id, tenant_id, action, ip_address, user_agent, created_at)
+SELECT 
+    generate_test_uuid(u.email || '_creation_log'),
+    u.id,
+    u.tenant_id,
+    'USER_CREATED',
+    '127.0.0.1'::inet,
+    'Seed Script',
+    u.created_at
+FROM users u
+ON CONFLICT DO NOTHING;
+
+-- Create initial auth tokens for testing
+INSERT INTO auth_tokens (id, user_id, token_hash, expires_at, created_at)
+SELECT
+    generate_test_uuid(u.email || '_initial_token'),
+    u.id,
+    crypt(gen_random_uuid()::text, gen_salt('bf', 10)),
+    CURRENT_TIMESTAMP + INTERVAL '7 days',
+    CURRENT_TIMESTAMP
+FROM users u
+ON CONFLICT DO NOTHING;
+
+-- Drop the test UUID function as it's no longer needed
+DROP FUNCTION IF EXISTS generate_test_uuid(text);
+
+-- Add a note about the default password
 DO $$
 BEGIN
-    RAISE NOTICE 'Seed data inserted successfully';
-    RAISE NOTICE 'Created 3 tenants and 5 users with audit logs';
-    RAISE NOTICE 'Default password for all users: Password@123';
+    RAISE NOTICE 'Seed data has been inserted successfully.';
+    RAISE NOTICE 'Default password for all users is: Password123!';
+    RAISE NOTICE 'Remember to change these passwords in production!';
 END $$;
